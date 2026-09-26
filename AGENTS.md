@@ -6,7 +6,7 @@ This file tells AI coding agents (Claude Code, Copilot, Cursor, Codex, etc.) how
 
 ## 1. Project Details (student fills this in)
 
-- **App name:** Recipe App
+- **App name:** Cookmarked
 - **One-sentence description:**
 - **Platform:** PWA
 - **Language(s):** TypeScript
