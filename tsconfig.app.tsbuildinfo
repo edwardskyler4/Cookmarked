@@ -1,1 +1,1 @@
-{"root":["./src/app.tsx","./src/main.tsx","./src/vite-env.d.ts","./src/data/supabaseclient.ts","./src/data/repositories/supabaseuserrepository.ts","./src/domain/models/user.ts","./src/domain/repositories/userrepository.ts","./src/services/saveuser.ts"],"version":"5.9.3"}
+{"root":["./src/App.tsx","./src/main.tsx","./src/vite-env.d.ts","./src/data/supabaseClient.ts","./src/data/repositories/SupabaseUserRepository.ts","./src/domain/models/User.ts","./src/domain/repositories/UserRepository.ts","./src/services/saveUser.ts"],"version":"5.9.3"}
