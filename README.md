@@ -1,12 +1,14 @@
 # recipe_app
 A recipe collection app designed to accept recipes shared from social media, store them, and allow the user to assign those meals to a calendar for the week.
 
-Team members:
+### Team members:
 
 Evan Crenshaw
 Ruby Larson
 Alex Hooper 
 
+### App location:
+[cookmarked.dev](https://cookmarked.edw20009.workers.dev/)
 ## MVP capabilities
 
 By the end of Sprint 5, users should be able to:
