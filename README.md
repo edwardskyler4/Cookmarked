@@ -3,10 +3,11 @@ A recipe collection app designed to accept recipes shared from social media, sto
 
 Team members:
 
-Evan Crenshaw
-Ruby Larson
-Alex Hooper 
-EmilyRose Beck
+Evan Crenshaw, 
+Ruby Larson, 
+Alex Hooper, 
+EmilyRose Beck, 
+Kyler Edwards (Landlord)
 
 ## MVP capabilities
 
