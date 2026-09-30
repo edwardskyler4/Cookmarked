@@ -12,7 +12,7 @@ export class SupabaseUserRepository implements UserRepository {
     const { data, error } = await supabase
       .from("Users")
       .insert({ username })
-      .select("id, username")
+      .select("user_id, username")
       .single<UserRow>();
 
     if (error) {
