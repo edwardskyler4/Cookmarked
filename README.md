@@ -6,6 +6,7 @@ Team members:
 Evan Crenshaw
 Ruby Larson
 Alex Hooper 
+EmilyRose Beck
 
 ## MVP capabilities
 
