@@ -1,12 +1,13 @@
 # recipe_app
+
 A recipe collection app designed to accept recipes shared from social media, store them, and allow the user to assign those meals to a calendar for the week.
 
 ### Team members:
 
-Evan Crenshaw, 
-Ruby Larson, 
-Alex Hooper, 
-EmilyRose Beck, 
+Evan Crenshaw,
+Ruby Larson,
+Alex Hooper,
+EmilyRose Beck,
 Kyler Edwards (Landlord)
 
 ### App location:
@@ -15,15 +16,15 @@ Kyler Edwards (Landlord)
 
 By the end of Sprint 5, users should be able to:
 
-* Create recipes manually.
-* Paste or share social URLs into the app.
-* Automatically save the URL, platform, title, thumbnail, and description when available.
-* Edit imported information and convert it into a recipe.
-* Browse a large recipe library with pagination, search, and filters.
-* Tag recipes as breakfast, lunch, dinner, or snack.
-* View a weekly calendar.
-* Assign, replace, and remove recipes from meal slots.
-* Use the app comfortably on a phone and desktop.
+- Create recipes manually.
+- Paste or share social URLs into the app.
+- Automatically save the URL, platform, title, thumbnail, and description when available.
+- Edit imported information and convert it into a recipe.
+- Browse a large recipe library with pagination, search, and filters.
+- Tag recipes as breakfast, lunch, dinner, or snack.
+- View a weekly calendar.
+- Assign, replace, and remove recipes from meal slots.
+- Use the app comfortably on a phone and desktop.
 
 | Sprint | Main milestone                  | Important work                                                                                                                                | Exit criterion                                                    |
 | ------ | ------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------- |

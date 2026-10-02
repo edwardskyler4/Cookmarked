@@ -5,10 +5,10 @@
   "preview_urls": true,
   "assets": {
     "directory": "./dist",
-    "not_found_handling": "single-page-application"
+    "not_found_handling": "single-page-application",
   },
   "vars": {
     "VITE_SUPABASE_PUBLISHABLE_KEY": "sb_publishable_689JCcCwVzt6-6BSSh3r2A_v5My_6mk",
-    "VITE_SUPABASE_URL": "https://kgcxhtznfputnlxenzbt.supabase.co"
-  }
+    "VITE_SUPABASE_URL": "https://kgcxhtznfputnlxenzbt.supabase.co",
+  },
 }

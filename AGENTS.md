@@ -70,9 +70,10 @@ If you catch yourself importing a database library into a UI component, or a UI 
 
 ### 3.1 Presentation Layer
 
-**Responsibility:** Display information and collect user input. It should be "thin": it knows *how to show things*, not *what the rules are*.
+**Responsibility:** Display information and collect user input. It should be "thin": it knows _how to show things_, not _what the rules are_.
 
 **Belongs here:**
+
 - Screens, pages, views, and UI components
 - Navigation and routing
 - Local UI state (is this modal open? which tab is selected? is a spinner showing?)
@@ -83,12 +84,14 @@ If you catch yourself importing a database library into a UI component, or a UI 
 - For web backends: HTTP route handlers / controllers that parse the request, call a service, and turn the result into an HTTP response. These are entry points, so they are presentation code and must stay thin.
 
 **Does NOT belong here:**
+
 - SQL, ORM queries, `fetch` calls to your database or third-party APIs, reading/writing local storage
 - Business rules (pricing, permissions, eligibility, scoring, state transitions)
 - Calculations that matter to the app's correctness
 - Anything you would need to copy if you built a second UI (e.g., a mobile version of your web app)
 
 **Typical locations:**
+
 - Web: `src/ui/`, `src/components/`, `src/pages/`, `src/routes/`, `src/controllers/`
 - Mobile: `lib/ui/` (Flutter), `src/screens/` (React Native), `Views/` and `ViewModels/` (SwiftUI/Android)
 
@@ -96,9 +99,10 @@ If you catch yourself importing a database library into a UI component, or a UI 
 
 ### 3.2 Business Logic Layer
 
-**Responsibility:** The heart of the app. It enforces the rules that make your app *your app*. It should be plain code in your language with no framework dependencies, which makes it the easiest layer to test.
+**Responsibility:** The heart of the app. It enforces the rules that make your app _your app_. It should be plain code in your language with no framework dependencies, which makes it the easiest layer to test.
 
 **Belongs here:**
+
 - Domain models / entities (e.g., `Task`, `Workout`, `Order`, `Recipe`) and their behavior
 - Business rules and **real validation** (a task's due date cannot be in the past; a user cannot join more than 5 groups; a score cannot be negative)
 - Services / use cases that perform one meaningful action (e.g., `completeTask`, `placeOrder`, `logWorkout`)
@@ -108,10 +112,11 @@ If you catch yourself importing a database library into a UI component, or a UI 
 - Custom domain errors (e.g., `TaskNotFoundError`, `DueDateInPastError`)
 
 **Does NOT belong here:**
+
 - Any import of a UI framework (React, Flutter widgets, SwiftUI, Android views)
 - Any import of a database driver, ORM, HTTP client, or storage API
 - HTTP status codes, request/response objects, or UI strings meant for display
-- Knowledge of *where* data is stored
+- Knowledge of _where_ data is stored
 
 **Typical locations:** `src/domain/`, `src/services/`, `src/core/`, `lib/domain/`
 
@@ -122,6 +127,7 @@ If you catch yourself importing a database library into a UI component, or a UI 
 **Responsibility:** Store and retrieve data. It translates between your domain models and whatever storage or external service you use.
 
 **Belongs here:**
+
 - Repository implementations (e.g., `PostgresTaskRepository`, `SqliteTaskRepository`, `FirebaseTaskRepository`) that implement the interfaces from the Business layer
 - Database queries, ORM models, migrations, schema definitions
 - HTTP clients for external APIs (weather, maps, payments, AI services)
@@ -130,6 +136,7 @@ If you catch yourself importing a database library into a UI component, or a UI 
 - Mappers that convert database rows or API JSON (DTOs) into domain models and back
 
 **Does NOT belong here:**
+
 - Business rules or decisions ("if the user is premium, then...")
 - UI code or display formatting
 - Validation beyond what the storage itself requires
@@ -140,7 +147,7 @@ If you catch yourself importing a database library into a UI component, or a UI 
 
 ### 3.4 Example: One Feature Across All Three Layers
 
-Feature: *"A user can mark a task as complete, but not if it's already complete."*
+Feature: _"A user can mark a task as complete, but not if it's already complete."_
 
 ```ts
 // ── BUSINESS LAYER: src/domain/TaskRepository.ts ──
@@ -184,7 +191,7 @@ Notice: the rule lives in one place (the service), the SQL lives in one place (t
 
 ### 3.5 Wiring the Layers Together
 
-Concrete data implementations are connected to services in **one place** at app startup (often called the *composition root*, e.g., `src/main.ts`, `src/app.ts`, `lib/main.dart`, or a dependency injection container). Services receive repositories as constructor or function parameters; they never create them. This is what lets tests swap in fakes.
+Concrete data implementations are connected to services in **one place** at app startup (often called the _composition root_, e.g., `src/main.ts`, `src/app.ts`, `lib/main.dart`, or a dependency injection container). Services receive repositories as constructor or function parameters; they never create them. This is what lets tests swap in fakes.
 
 ---
 
@@ -220,12 +227,12 @@ All production code in this project is written **test-first**. Agents must follo
 
 Follow the testing pyramid: many fast unit tests at the bottom, fewer slow tests at the top.
 
-| Layer | Test type | What to test | How |
-|---|---|---|---|
-| **Business Logic** | Unit tests (the majority of your tests) | Every rule, calculation, validation, and error case in services and domain models | Use **fake/in-memory repositories** that implement the interfaces. No database, no network, no UI. These should run in milliseconds. |
-| **Data Access** | Integration tests | Repositories correctly save, load, update, delete, and map data | Run against a real test database, in-memory SQLite, an emulator, or recorded API responses. Reset data between tests. |
-| **Presentation** | Component / widget tests | Components render the right thing for each state (loading, empty, error, success) and call the right service on user actions | Use your framework's testing library with **mocked services**. Test what the user sees, not internal implementation details. |
-| **Whole app** | A few end-to-end tests | The most important user journeys (e.g., sign up → create item → see it in list) | Playwright, Cypress, Detox, Maestro, or integration_test. Keep these few; they're slow. |
+| Layer              | Test type                               | What to test                                                                                                                 | How                                                                                                                                  |
+| ------------------ | --------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| **Business Logic** | Unit tests (the majority of your tests) | Every rule, calculation, validation, and error case in services and domain models                                            | Use **fake/in-memory repositories** that implement the interfaces. No database, no network, no UI. These should run in milliseconds. |
+| **Data Access**    | Integration tests                       | Repositories correctly save, load, update, delete, and map data                                                              | Run against a real test database, in-memory SQLite, an emulator, or recorded API responses. Reset data between tests.                |
+| **Presentation**   | Component / widget tests                | Components render the right thing for each state (loading, empty, error, success) and call the right service on user actions | Use your framework's testing library with **mocked services**. Test what the user sees, not internal implementation details.         |
+| **Whole app**      | A few end-to-end tests                  | The most important user journeys (e.g., sign up → create item → see it in list)                                              | Playwright, Cypress, Detox, Maestro, or integration_test. Keep these few; they're slow.                                              |
 
 **Start new features in the Business layer.** Test-drive the rule first, then the repository, then the UI.
 
@@ -237,7 +244,9 @@ Use **Arrange → Act → Assert**, and name tests so a failure explains itself:
 describe("completeTask", () => {
   it("marks an incomplete task as complete", async () => {
     // Arrange
-    const repo = new InMemoryTaskRepository([{ id: "1", title: "Study", isComplete: false }]);
+    const repo = new InMemoryTaskRepository([
+      { id: "1", title: "Study", isComplete: false },
+    ]);
     // Act
     const result = await completeTask(repo, "1");
     // Assert
@@ -245,13 +254,19 @@ describe("completeTask", () => {
   });
 
   it("throws TaskAlreadyCompleteError when the task is already complete", async () => {
-    const repo = new InMemoryTaskRepository([{ id: "1", title: "Study", isComplete: true }]);
-    await expect(completeTask(repo, "1")).rejects.toThrow(TaskAlreadyCompleteError);
+    const repo = new InMemoryTaskRepository([
+      { id: "1", title: "Study", isComplete: true },
+    ]);
+    await expect(completeTask(repo, "1")).rejects.toThrow(
+      TaskAlreadyCompleteError,
+    );
   });
 
   it("throws TaskNotFoundError when the task does not exist", async () => {
     const repo = new InMemoryTaskRepository([]);
-    await expect(completeTask(repo, "missing")).rejects.toThrow(TaskNotFoundError);
+    await expect(completeTask(repo, "missing")).rejects.toThrow(
+      TaskNotFoundError,
+    );
   });
 });
 ```
