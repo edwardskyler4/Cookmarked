@@ -17,4 +17,15 @@ describe("saveUser", () => {
     expect(savedUsers).toEqual(["Evan"]);
     expect(result).toEqual({ id: 1, username: "Evan" });
   });
+
+  it("propagates a repository failure to the caller", async () => {
+    const failure = new Error("The database is unavailable.");
+    const repository: UserRepository = {
+      async save() {
+        throw failure;
+      },
+    };
+
+    await expect(saveUser(repository, "Evan")).rejects.toBe(failure);
+  });
 });
