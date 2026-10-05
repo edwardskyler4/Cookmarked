@@ -3,7 +3,7 @@ import type { UserRepository } from "../../domain/repositories/UserRepository";
 import { supabase } from "../supabaseClient";
 
 type UserRow = {
-  id: number;
+  user_id: number;
   username: string;
 };
 
@@ -19,6 +19,6 @@ export class SupabaseUserRepository implements UserRepository {
       throw new Error(`Unable to save user: ${error.message}`);
     }
 
-    return { id: data.id, username: data.username };
+    return { id: data.user_id, username: data.username };
   }
 }
