@@ -309,3 +309,36 @@ h1 {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
+
+.auth-panel {
+  max-width: 480px;
+  margin: 0 auto;
+}
+.auth-form fieldset {
+  display: grid;
+  gap: 18px;
+  padding: 0;
+  border: 0;
+  margin: 24px 0;
+}
+.auth-form label {
+  display: grid;
+  gap: 8px;
+}
+.auth-form input {
+  width: 100%;
+  border: 1px solid var(--color-chip-border);
+  border-radius: 8px;
+  padding: 12px;
+}
+.auth-panel [role="alert"],
+.auth-notice {
+  color: #9b2525;
+}
+.auth-notice {
+  padding: 12px 20px;
+}
+button:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}

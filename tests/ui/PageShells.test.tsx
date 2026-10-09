@@ -4,13 +4,16 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import App from "../../src/App";
 
+import { fakeAuthService } from "../fakes/authService";
+
 afterEach(cleanup);
 
 describe("Cookmarked page shells", () => {
-  it.each(["Planner", "Import", "Settings", "Login"])(
+  it.each(["Planner", "Import", "Settings"])(
     "returns to the home library from %s",
-    (page) => {
-      render(<App />);
+    async (page) => {
+      render(<App authService={fakeAuthService().service} />);
+      await screen.findByRole("searchbox");
       fireEvent.click(screen.getByRole("button", { name: page }));
 
       fireEvent.click(screen.getByRole("button", { name: "Home" }));
@@ -34,27 +37,38 @@ describe("Cookmarked page shells", () => {
     },
   );
 
-  it("opens login from the header", () => {
-    render(<App />);
-
-    const loginButton = screen.queryByRole("button", { name: "Login" });
-    expect(loginButton).not.toBeNull();
-    fireEvent.click(loginButton!);
-
-    expect(screen.queryByRole("heading", { name: "Login" })).not.toBeNull();
-    expect(
-      screen.queryByRole("searchbox", { name: "Search recipes" }),
-    ).toBeNull();
-    expect(
-      screen.getByText("Login", { selector: ".location-label" }),
-    ).toBeDefined();
+  it("returns to the home library after logging in again", async () => {
+    render(<App authService={fakeAuthService().service} />);
+    await screen.findByRole("searchbox");
+    fireEvent.click(screen.getByRole("button", { name: "Planner" }));
+    fireEvent.click(screen.getByRole("button", { name: "Log out" }));
+    await screen.findByRole("heading", { name: "Login" });
+    fireEvent.change(screen.getByLabelText("Username"), {
+      target: { value: "kyler" },
+    });
+    fireEvent.change(screen.getByLabelText("Password"), {
+      target: { value: "password123" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Log in" }));
+    await screen.findByRole("searchbox", { name: "Search recipes" });
     expect(
       screen.getByRole("button", { name: "Home" }).getAttribute("aria-current"),
-    ).toBeNull();
+    ).toBe("page");
+    expect(screen.queryByRole("heading", { name: "Planner" })).toBeNull();
   });
 
-  it("opens settings from the main navigation", () => {
-    render(<App />);
+  it("opens login after signing out from the header", async () => {
+    render(<App authService={fakeAuthService().service} />);
+    await screen.findByRole("searchbox");
+    fireEvent.click(screen.getByRole("button", { name: "Log out" }));
+    await screen.findByRole("heading", { name: "Login" });
+    expect(screen.queryByRole("searchbox")).toBeNull();
+    expect(screen.queryByRole("navigation")).toBeNull();
+  });
+
+  it("opens settings from the main navigation", async () => {
+    render(<App authService={fakeAuthService().service} />);
+    await screen.findByRole("searchbox");
 
     fireEvent.click(screen.getByRole("button", { name: "Settings" }));
 
@@ -72,8 +86,9 @@ describe("Cookmarked page shells", () => {
     ).toBeDefined();
   });
 
-  it("opens import from the main navigation", () => {
-    render(<App />);
+  it("opens import from the main navigation", async () => {
+    render(<App authService={fakeAuthService().service} />);
+    await screen.findByRole("searchbox");
 
     fireEvent.click(screen.getByRole("button", { name: "Import" }));
 
@@ -91,8 +106,9 @@ describe("Cookmarked page shells", () => {
     ).toBeDefined();
   });
 
-  it("opens the planner from the main navigation", () => {
-    render(<App />);
+  it("opens the planner from the main navigation", async () => {
+    render(<App authService={fakeAuthService().service} />);
+    await screen.findByRole("searchbox");
 
     fireEvent.click(screen.getByRole("button", { name: "Planner" }));
 
