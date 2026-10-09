@@ -5,7 +5,7 @@ dist/
 .env.*
 !.env.example
 .supabase/
-.supabase/.temp/
-.supabase/.branches/
+supabase/.temp/
+supabase/.branches/
 supabase/.env
 supabase/.env.*

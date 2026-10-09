@@ -1,9 +1,11 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import PlannerPage from "./ui/routes/PlannerPage";
 import ImportPage from "./ui/routes/ImportPage";
 import SettingsPage from "./ui/routes/SettingsPage";
 import LoginPage from "./ui/routes/LoginPage";
 import "./App.css";
+import type { AuthService } from "./services/authService";
+import type { AuthUser } from "./domain/models/AuthUser";
 
 const filters = ["All recipes", "Breakfast", "Dinner", "Dessert"];
 const recipes = ["Recipe Name", "Recipe Name", "Recipe Name", "Recipe Name"];
@@ -12,7 +14,6 @@ const pageLabels = {
   planner: "Planner",
   import: "Import",
   settings: "Settings",
-  login: "Login",
 };
 type Page = keyof typeof pageLabels;
 const navigation = [
@@ -31,7 +32,7 @@ function SearchIcon() {
   );
 }
 
-function NavigationIcon({ type }: { type: Exclude<Page, "login"> }) {
+function NavigationIcon({ type }: { type: Page }) {
   if (type === "home")
     return (
       <span aria-hidden="true" className="nav-symbol">
@@ -57,7 +58,15 @@ function NavigationIcon({ type }: { type: Exclude<Page, "login"> }) {
   );
 }
 
-export default function App() {
+function SignedInApp({
+  user,
+  onLogout,
+  pending,
+}: {
+  user: AuthUser;
+  onLogout: () => void;
+  pending: boolean;
+}) {
   const [page, setPage] = useState<Page>("home");
 
   return (
@@ -70,12 +79,13 @@ export default function App() {
           </div>
           <div className="header-actions">
             <p className="location-label">{pageLabels[page]}</p>
+            <span>{user.username}</span>
             <button
               className="filter-chip"
-              aria-current={page === "login" ? "page" : undefined}
-              onClick={() => setPage("login")}
+              onClick={onLogout}
+              disabled={pending}
             >
-              Login
+              {pending ? "Logging out…" : "Log out"}
             </button>
           </div>
         </header>
@@ -131,7 +141,6 @@ export default function App() {
           {page === "planner" && <PlannerPage />}
           {page === "import" && <ImportPage />}
           {page === "settings" && <SettingsPage />}
-          {page === "login" && <LoginPage />}
         </div>
         <nav className="bottom-nav" aria-label="Main navigation">
           {navigation.map(([type, label]) => (
@@ -146,6 +155,108 @@ export default function App() {
             </button>
           ))}
         </nav>
+      </section>
+    </main>
+  );
+}
+
+export default function App({ authService }: { authService: AuthService }) {
+  const [user, setUser] = useState<AuthUser | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [attempt, setAttempt] = useState(0);
+  const [loggingOut, setLoggingOut] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    let sessionChanged = false;
+    setLoading(true);
+    setError(null);
+    const unsubscribe = authService.subscribe((next) => {
+      if (!active) return;
+      sessionChanged = true;
+      setUser(next);
+      setLoading(false);
+      setError(null);
+    });
+    authService
+      .restore()
+      .then((next) => {
+        if (active && !sessionChanged) {
+          setUser(next);
+          setLoading(false);
+        }
+      })
+      .catch(() => {
+        if (active && !sessionChanged) {
+          setUser(null);
+          setLoading(false);
+          setError("Unable to check your session. Please try again.");
+        }
+      });
+    return () => {
+      active = false;
+      unsubscribe();
+    };
+  }, [authService, attempt]);
+
+  async function logout() {
+    if (loggingOut) return;
+    setLoggingOut(true);
+    setError(null);
+    try {
+      await authService.logout();
+      setUser(null);
+    } catch {
+      setError("Unable to log out. Please try again.");
+    } finally {
+      setLoggingOut(false);
+    }
+  }
+
+  if (!loading && user)
+    return (
+      <>
+        {error && (
+          <p role="alert" className="auth-notice">
+            {error}
+          </p>
+        )}
+        <SignedInApp
+          key={user.id}
+          user={user}
+          onLogout={logout}
+          pending={loggingOut}
+        />
+      </>
+    );
+
+  return (
+    <main className="page-shell">
+      <section className="app-shell" aria-label="Cookmarked login">
+        <header className="app-header">
+          <div className="header-brand">
+            <img src="/logo.jpg" className="logo" alt="" />
+            <h1>Cookmarked</h1>
+          </div>
+        </header>
+        <div className="content-area">
+          {loading ? (
+            <p role="status">Checking your session…</p>
+          ) : error ? (
+            <section className="page-panel">
+              <p role="alert">{error}</p>
+              <button
+                className="filter-chip"
+                onClick={() => setAttempt((value) => value + 1)}
+              >
+                Retry
+              </button>
+            </section>
+          ) : (
+            <LoginPage authService={authService} onSignedIn={setUser} />
+          )}
+        </div>
       </section>
     </main>
   );

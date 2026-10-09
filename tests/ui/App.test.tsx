@@ -4,11 +4,14 @@ import { cleanup, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import App from "../../src/App";
 
+import { fakeAuthService } from "../fakes/authService";
+
 afterEach(cleanup);
 
 describe("Cookmarked home", () => {
-  it("shows the recipe library on startup", () => {
-    render(<App />);
+  it("shows the recipe library on startup", async () => {
+    render(<App authService={fakeAuthService().service} />);
+    await screen.findByRole("searchbox");
 
     expect(screen.getByRole("heading", { name: "Cookmarked" })).toBeDefined();
     expect(screen.getByText("Home / Library")).toBeDefined();
@@ -20,8 +23,9 @@ describe("Cookmarked home", () => {
     ).toHaveLength(4);
   });
 
-  it("marks home as the current navigation page on startup", () => {
-    render(<App />);
+  it("marks home as the current navigation page on startup", async () => {
+    render(<App authService={fakeAuthService().service} />);
+    await screen.findByRole("searchbox");
 
     const navigation = within(
       screen.getByRole("navigation", { name: "Main navigation" }),
