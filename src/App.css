@@ -47,6 +47,45 @@ button {
   min-height: 100vh;
   padding: 0;
 }
+.page-shell.dark-theme {
+  --color-ink: #f5f3eb;
+  --color-page: #121714;
+  --color-surface: #202a25;
+  --color-white: #29342e;
+  --color-placeholder: #3c4941;
+  --color-muted: #c0c9c3;
+  --color-body-muted: #b8c2ba;
+  --color-nav-muted: #b8c2ba;
+  --color-placeholder-text: #b1bcb5;
+  --color-chip-border: #65746a;
+  --color-nav-surface: rgba(32, 42, 37, 0.96);
+  background: var(--color-page);
+  color: var(--color-ink);
+}
+
+.page-shell.dark-theme {
+  color-scheme: dark;
+}
+
+.page-shell.dark-theme input,
+.page-shell.dark-theme textarea,
+.page-shell.dark-theme select {
+  border-color: var(--color-chip-border);
+  background-color: var(--color-surface);
+  color: var(--color-ink);
+}
+
+.page-shell.dark-theme .search-bar input {
+  background: transparent;
+}
+
+.save-settings-button:disabled {
+  border-color: #c6c6c1;
+  background: #dededc;
+  color: #737373;
+  cursor: not-allowed;
+  opacity: 1;
+}
 .app-shell {
   min-height: 100vh;
   overflow: hidden;
@@ -342,3 +381,4 @@ button:disabled {
   opacity: 0.6;
   cursor: wait;
 }
+

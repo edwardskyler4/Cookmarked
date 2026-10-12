@@ -62,15 +62,19 @@ function SignedInApp({
   user,
   onLogout,
   pending,
+  darkMode,
+  onSaveDarkMode,
 }: {
   user: AuthUser;
   onLogout: () => void;
   pending: boolean;
+  darkMode: boolean;
+  onSaveDarkMode: (darkMode: boolean) => void;
 }) {
   const [page, setPage] = useState<Page>("home");
 
   return (
-    <main className="page-shell">
+    <main className={darkMode ? "page-shell dark-theme" : "page-shell"}>
       <section className="app-shell" aria-label={`Cookmarked ${page}`}>
         <header className="app-header">
           <div className="header-brand">
@@ -140,7 +144,13 @@ function SignedInApp({
           )}
           {page === "planner" && <PlannerPage />}
           {page === "import" && <ImportPage />}
-          {page === "settings" && <SettingsPage />}
+          {page === "settings" && (
+            <SettingsPage
+              username={user.username}
+              darkMode={darkMode}
+              onSaveDarkMode={onSaveDarkMode}
+            />
+          )}
         </div>
         <nav className="bottom-nav" aria-label="Main navigation">
           {navigation.map(([type, label]) => (
@@ -166,6 +176,7 @@ export default function App({ authService }: { authService: AuthService }) {
   const [error, setError] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
   const [loggingOut, setLoggingOut] = useState(false);
+  const [darkMode, setDarkMode] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -227,12 +238,14 @@ export default function App({ authService }: { authService: AuthService }) {
           user={user}
           onLogout={logout}
           pending={loggingOut}
+          darkMode={darkMode}
+          onSaveDarkMode={setDarkMode}
         />
       </>
     );
 
   return (
-    <main className="page-shell">
+    <main className={darkMode ? "page-shell dark-theme" : "page-shell"}>
       <section className="app-shell" aria-label="Cookmarked login">
         <header className="app-header">
           <div className="header-brand">
