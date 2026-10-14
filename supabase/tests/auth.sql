@@ -4,14 +4,14 @@ insert into auth.users(id, email, raw_user_meta_data) values
  ('11111111-1111-1111-1111-111111111111', 'kyler@accounts.cookmarked.edw20009.workers.dev', '{"username":"untrusted"}'),
  ('22222222-2222-2222-2222-222222222222', 'ruby@accounts.cookmarked.edw20009.workers.dev', '{}');
 do $$ begin
- if not exists (select 1 from public."Users" where username = 'kyler' and auth_user_id = '11111111-1111-1111-1111-111111111111') then
+ if not exists (select 1 from public.profile where username = 'kyler' and auth_user_id = '11111111-1111-1111-1111-111111111111') then
    raise exception 'Registration must create the profile using the canonical Auth identifier';
  end if;
 end $$;
 -- Duplicate canonical username must fail at the storage boundary.
 do $$ begin
  begin
-  insert into public."Users"(username, auth_user_id) values ('KYLER', '33333333-3333-3333-3333-333333333333');
+  insert into public.profile(username, auth_user_id) values ('KYLER', '33333333-3333-3333-3333-333333333333');
   raise exception 'Duplicate username was accepted';
  exception when unique_violation then null;
  end;
@@ -28,10 +28,15 @@ end $$;
 set local role authenticated;
 set local request.jwt.claim.sub = '11111111-1111-1111-1111-111111111111';
 do $$ begin
- if (select count(*) from public."Users") <> 1 then raise exception 'RLS must hide other profiles even with an old permissive policy'; end if;
- if (select username from public."Users") <> 'kyler' then raise exception 'Wrong profile visible'; end if;
  begin
-   update public."Users" set username = 'changed';
+   perform * from public."Users";
+   raise exception 'Legacy Users table is still accessible';
+ exception when insufficient_privilege then null;
+ end;
+ if (select count(*) from public.profile) <> 1 then raise exception 'RLS must hide other profiles even with an old permissive policy'; end if;
+ if (select username from public.profile) <> 'kyler' then raise exception 'Wrong profile visible'; end if;
+ begin
+   update public.profile set username = 'changed';
    raise exception 'Client profile update accepted';
  exception when insufficient_privilege then null;
  end;
@@ -40,7 +45,7 @@ reset role;
 set local role anon;
 do $$ begin
  begin
-   perform * from public."Users";
+   perform * from public.profile;
    raise exception 'Anonymous profile access accepted';
  exception when insufficient_privilege then null;
  end;
@@ -61,6 +66,6 @@ end $$;
 reset role;
 delete from auth.users where id = '11111111-1111-1111-1111-111111111111';
 do $$ begin
- if exists(select 1 from public."Users" where username = 'kyler') then raise exception 'Deleted accounts must remove their profiles'; end if;
+ if exists(select 1 from public.profile where username = 'kyler') then raise exception 'Deleted accounts must remove their profiles'; end if;
 end $$;
 rollback;

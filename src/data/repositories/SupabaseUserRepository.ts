@@ -10,7 +10,7 @@ type UserRow = {
 export class SupabaseUserRepository implements UserRepository {
   async save(username: string): Promise<User> {
     const { data, error } = await supabase
-      .from("Users")
+      .from("profile")
       .insert({ username })
       .select("user_id, username")
       .single<UserRow>();
