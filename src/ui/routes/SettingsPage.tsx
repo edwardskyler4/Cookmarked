@@ -11,7 +11,6 @@ export default function SettingsPage({
   darkMode: boolean;
   onSaveDarkMode: (darkMode: boolean) => void;
 }) {
-  // Keep edits in local draft state until the user chooses a save action.
   const [username, setUsername] = useState(currentUsername);
   const [usernameDraft, setUsernameDraft] = useState(currentUsername);
   const [passwordDraft, setPasswordDraft] = useState("");
@@ -23,7 +22,6 @@ export default function SettingsPage({
     (editingUsername && usernameDraft.trim() !== username) ||
     (editingPassword && passwordDraft.length > 0);
 
-  // Apply the draft theme immediately so the panel previews the selected mode.
   const panelStyle = {
     display: "grid",
     gap: "24px",
@@ -73,7 +71,6 @@ export default function SettingsPage({
                   className="filter-chip active"
                   type="button"
                   onClick={() => {
-                    // Trim whitespace before storing the updated username.
                     setUsername(usernameDraft.trim());
                     setEditingUsername(false);
                   }}
@@ -135,7 +132,6 @@ export default function SettingsPage({
                   className="filter-chip active"
                   type="button"
                   onClick={() => {
-                    // Clear the temporary password after either action.
                     setPasswordDraft("");
                     setEditingPassword(false);
                   }}
@@ -203,7 +199,6 @@ export default function SettingsPage({
           </label>
         </section>
 
-        {/* The parent owns persistence for the appearance setting. */}
         <button
           className="filter-chip active save-settings-button"
           type="button"
