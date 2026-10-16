@@ -33,7 +33,7 @@ describe("saveUser with the Supabase SDK", () => {
 
   function savedUserResponse() {
     fetchResponse.mockResolvedValue(
-      new Response(JSON.stringify({ user_id: 42, username: "Evan" }), {
+      new Response(JSON.stringify({ user_id: 42, username: "TestUser" }), {
         status: 201,
         headers: { "Content-Type": "application/json" },
       }),
@@ -44,30 +44,30 @@ describe("saveUser with the Supabase SDK", () => {
     savedUserResponse();
     const repository = new SupabaseUserRepository();
 
-    const user = await saveUser(repository, "Evan");
+    const user = await saveUser(repository, "TestUser");
 
-    expect(user).toEqual({ id: 42, username: "Evan" });
+    expect(user).toEqual({ id: 42, username: "TestUser" });
   });
 
   it("sends the entered username in an insert request", async () => {
     savedUserResponse();
     const repository = new SupabaseUserRepository();
 
-    await saveUser(repository, "Evan");
+    await saveUser(repository, "TestUser");
 
     expect(fetchResponse).toHaveBeenCalledTimes(1);
     const [input, init] = fetchResponse.mock.calls[0];
     const request = new Request(input, init);
     expect(request.method).toBe("POST");
     expect(new URL(request.url).pathname).toBe("/rest/v1/profile");
-    expect(await request.json()).toEqual({ username: "Evan" });
+    expect(await request.json()).toEqual({ username: "TestUser" });
   });
 
   it("requests the saved user ID and username", async () => {
     savedUserResponse();
     const repository = new SupabaseUserRepository();
 
-    await saveUser(repository, "Evan");
+    await saveUser(repository, "TestUser");
 
     const [input, init] = fetchResponse.mock.calls[0];
     const request = new Request(input, init);
@@ -91,7 +91,7 @@ describe("saveUser with the Supabase SDK", () => {
     );
     const repository = new SupabaseUserRepository();
 
-    await expect(saveUser(repository, "Evan")).rejects.toThrow(
+    await expect(saveUser(repository, "TestUser")).rejects.toThrow(
       "Unable to save user: Permission denied",
     );
   });
@@ -110,7 +110,7 @@ describe("saveUser with the Supabase SDK", () => {
     );
     const repository = new SupabaseUserRepository();
 
-    await expect(saveUser(repository, "Evan")).rejects.toThrow(
+    await expect(saveUser(repository, "TestUser")).rejects.toThrow(
       "Unable to save user: Cannot coerce the result to a single JSON object",
     );
   });
