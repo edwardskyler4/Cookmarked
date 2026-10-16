@@ -94,17 +94,22 @@ calls Supabase directly. `AuthUser.id` is the Auth UUID; the existing numeric
 
 ### Supabase setup (required before the flow works)
 
-1. Review the actual `public."Users"` schema, existing triggers/policies, and any
+1. Review the actual `public.profile` schema, existing triggers/policies, and any
    recipe relationships before applying the migration. It assumes the existing
    numeric `user_id` and `username` columns described by our repository. Test in a
    development project first. Existing demo rows remain unlinked; existing Auth
    accounts need an explicit profile backfill if any exist.
-2. Apply `supabase/migrations/202610070001_auth_profiles.sql`. It adds
+2. Apply the migrations in order, including
+   `supabase/migrations/202610140001_replace_users_with_profile.sql`. The first
+   migration adds
    `auth_user_id`, creates profiles transactionally at signup, enforces canonical
    usernames, prevents identifier changes, and restricts profile reads to the
    owner. Browser profile writes are disabled. Legacy anonymous insert access
    through `saveUser` is intentionally removed. The migration does not modify
-   recipe tables whose schemas are not tracked here.
+   recipe tables whose schemas are not tracked here. The follow-up migration
+   repairs Dev projects where the original migration was already marked applied:
+   it isolates the old `public."Users"` table and rebuilds the profile trigger
+   and policies.
 3. In Supabase Authentication settings, enable email/password and new signups,
    disable Confirm Email, set minimum password length to 8, and disable unused
    providers and anonymous sign-ins.
