@@ -9,7 +9,7 @@ const messages: Record<string, string> = {
   invalid_input: "Enter your username and password.",
   invalid_username:
     "Use 3–32 letters, digits, or underscores for your username.",
-  weak_password: "Use a password with at least 8 characters.",
+  weak_password: "Use a password with at least 8 characters. Include [a-zA-Z],[0-9],[!@#$%^&*]",
   invalid_credentials: "Username or password is incorrect.",
   username_taken: "That username is already registered.",
   rate_limited: "Too many attempts. Please wait before trying again.",
@@ -81,6 +81,7 @@ export default function LoginPage({
               name="password"
               type="password"
               autoComplete={register ? "new-password" : "current-password"}
+              pattern="(?=.*[a-zA-Z])(?=.*[0-9])(?=.*[!@#$%^&*]).*.{8,}"
               required
               value={password}
               onChange={(event) => setPassword(event.target.value)}
@@ -93,6 +94,7 @@ export default function LoginPage({
                 name="confirmation"
                 type="password"
                 autoComplete="new-password"
+                pattern="(?=.*[a-zA-Z])(?=.*[0-9])(?=.*[!@#$%^&*]).*.{8,}"
                 required
                 value={confirmation}
                 onChange={(event) => setConfirmation(event.target.value)}
