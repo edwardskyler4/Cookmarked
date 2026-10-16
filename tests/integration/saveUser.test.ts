@@ -59,7 +59,7 @@ describe("saveUser with the Supabase SDK", () => {
     const [input, init] = fetchResponse.mock.calls[0];
     const request = new Request(input, init);
     expect(request.method).toBe("POST");
-    expect(new URL(request.url).pathname).toBe("/rest/v1/Users");
+    expect(new URL(request.url).pathname).toBe("/rest/v1/profile");
     expect(await request.json()).toEqual({ username: "Evan" });
   });
 
