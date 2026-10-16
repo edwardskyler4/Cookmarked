@@ -36,3 +36,11 @@ describe("ImportPage fields", () => {
     );
   });
 });
+
+it("places Save across from Delete", () => {
+  render(<ImportPage />);
+
+  const actions = screen.getByRole("button", { name: "Delete recipe" }).parentElement;
+  expect(actions?.firstElementChild?.textContent).toBe("Delete");
+  expect(actions?.lastElementChild?.textContent).toBe("Save");
+});

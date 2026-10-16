@@ -92,13 +92,21 @@ export default function ImportPage() {
           <span>Notes</span>
           <textarea name="notes" rows={4} />
         </label>
-        <div className="editor-actions">
+        {/* Keep Delete and Save at opposite ends of the actions row. */}
+        <div
+          className="editor-actions"
+          style={{ display: "flex", justifyContent: "space-between" }}
+        >
           <button
             className="delete-recipe-button"
             type="button"
             aria-label="Delete recipe"
           >
             Delete
+          </button>
+          {/* This button is present in the editor; saving is not wired up yet. */}
+          <button className="save-recipe-button" type="button">
+            Save
           </button>
         </div>
       </form>
