@@ -103,8 +103,10 @@ export default function LoginPage({
           )}
           {register && (
             <p>
-              Use 3–32 letters, digits, or underscores for your username and at
-              least 8 characters for your password.
+              Use 3-32 letters, digits, or underscores for your username. 
+              Use a password with at least 8 characters. Include at least 1 
+              uppercase and 1 lowercase letter,1 number, and one of !@#$%^&* 
+              in your password.
             </p>
           )}
           <button
