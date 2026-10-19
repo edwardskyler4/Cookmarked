@@ -924,3 +924,33 @@ button:disabled {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
+
+.recipe-editor {
+  --editor-error-color: #9b2525;
+}
+.dark-theme .recipe-editor {
+  --editor-error-color: #ffb4ab;
+}
+.recipe-editor .editor-field [aria-invalid="true"] {
+  border-style: solid;
+  border-width: 2px;
+  border-color: var(--editor-error-color);
+}
+.editor-field-error {
+  color: var(--editor-error-color);
+  font-size: 0.85rem;
+  font-weight: 400;
+  line-height: 1.5;
+}
+.editor-feedback {
+  border: 1px solid var(--color-chip-border);
+  border-radius: 8px;
+  padding: 16px;
+  line-height: 1.5;
+}
+.editor-validation-error {
+  border-left-width: 4px;
+  border-left-style: solid;
+  border-color: var(--editor-error-color);
+  color: var(--editor-error-color);
+}
