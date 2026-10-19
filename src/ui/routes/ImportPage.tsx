@@ -1,22 +1,7 @@
-import { useState } from "react";
-
 // Grid layout puts each label above its field with a small, consistent gap.
 const fieldStyle = { display: "grid", gap: "0.5rem" } as const;
 
 export default function ImportPage() {
-  // `tag` is the text currently being typed; `tags` stores the added tags.
-  const [tag, setTag] = useState("");
-  const [tags, setTags] = useState<string[]>([]);
-
-  // Trim extra spaces and skip empty or duplicate tags before adding one.
-  function addTag() {
-    const nextTag = tag.trim();
-    if (nextTag && !tags.includes(nextTag)) {
-      setTags([...tags, nextTag]);
-      setTag("");
-    }
-  }
-
   return (
     <section
       className="page-panel recipe-editor"
@@ -31,61 +16,77 @@ export default function ImportPage() {
       <form className="recipe-editor-form">
         {/* Wrapping each control in its label associates that label with only that field. */}
         <label className="editor-field" style={fieldStyle}>
-          <span>Source</span>
+          <span>Source URL</span>
           <input type="url" name="source" />
         </label>
         <label className="editor-field" style={fieldStyle}>
-          <span>Title</span>
-          <input type="text" name="title" />
+          <span>
+            Recipe Title <span className="field-hint">(Required)</span>
+          </span>
+          <input type="text" name="title" required />
         </label>
-        <div className="editor-field" style={fieldStyle}>
-          {/* htmlFor connects this label to the tag input by its id. */}
-          <label htmlFor="recipe-tag">Tags</label>
-          <div className="tag-entry">
-            <input
-              id="recipe-tag"
-              value={tag}
-              onChange={(event) => setTag(event.target.value)}
-              placeholder="Add a tag"
-            />
-            <button className="filter-chip" type="button" onClick={addTag}>
-              Add
-            </button>
-          </div>
-          {tags.length > 0 && (
-            <ul className="tag-list" aria-label="Recipe tags">
-              {tags.map((item) => (
-                <li key={item}>{item}</li>
-              ))}
-            </ul>
-          )}
+        <div className="editor-field-row">
+          <label className="editor-field" style={fieldStyle}>
+            <span>Meal Type</span>
+            <select name="mealType" defaultValue="">
+              <option value="">Select meal type</option>
+              <option>Breakfast</option>
+              <option>Lunch</option>
+              <option>Dinner</option>
+              <option>Supper</option>
+              <option>Snack</option>
+            </select>
+          </label>
+          <label className="editor-field" style={fieldStyle}>
+            <span>Course</span>
+            <select name="course" defaultValue="">
+              <option value="">Select course</option>
+              <option>Dessert</option>
+              <option>Entree</option>
+              <option>Side</option>
+              <option>Beverage</option>
+              <option>Appetizer</option>
+            </select>
+          </label>
         </div>
         <div className="editor-field-row">
           <label className="editor-field" style={fieldStyle}>
-            <span>Prep time</span>
-            <input type="text" name="prepTime" placeholder="e.g. 30 min" />
+            <span>
+              Prep Time <span className="field-hint">(Required)</span>
+            </span>
+            <input
+              type="text"
+              name="prepTime"
+              required
+              placeholder="e.g. 30 min"
+            />
           </label>
           <label className="editor-field" style={fieldStyle}>
-            <span>Serving size</span>
+            <span>
+              Serving Size <span className="field-hint">(Required)</span>
+            </span>
             <input
               type="text"
               name="servingSize"
+              required
               placeholder="e.g. 4 servings"
             />
           </label>
         </div>
         <label className="editor-field" style={fieldStyle}>
-          <span>Ingredients</span>
-          <textarea name="ingredients" rows={5} />
-        </label>
-        <label className="editor-field" style={fieldStyle}>
-          <span>Directions</span>
-          <textarea name="directions" rows={5} />
+          <span>
+            Ingredients <span className="field-hint">(Required)</span>
+          </span>
+          <textarea name="ingredients" required rows={5} />
         </label>
         <label className="editor-field" style={fieldStyle}>
           <span>
-            Nutrition <span className="field-hint">(optional)</span>
+            Directions <span className="field-hint">(Required)</span>
           </span>
+          <textarea name="directions" required rows={5} />
+        </label>
+        <label className="editor-field" style={fieldStyle}>
+          <span>Nutritional Information</span>
           <textarea name="nutrition" rows={4} />
         </label>
         <label className="editor-field" style={fieldStyle}>
@@ -93,12 +94,12 @@ export default function ImportPage() {
           <textarea name="notes" rows={4} />
         </label>
         <div className="editor-actions">
-          <button
-            className="delete-recipe-button"
-            type="button"
-            aria-label="Delete recipe"
-          >
-            Delete
+          <button className="filter-chip" type="reset">
+            Clear
+          </button>
+          {/* Persistence will be connected in the next step. */}
+          <button className="filter-chip active" type="button">
+            Save
           </button>
         </div>
       </form>
