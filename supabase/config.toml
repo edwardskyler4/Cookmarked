@@ -3,3 +3,7 @@ project_id = "cookmarked"
 # This endpoint authenticates credentials itself; callers do not have a session yet.
 [functions.auth]
 verify_jwt = false
+
+# Recipe operations require a valid Supabase Auth JWT.
+[functions.recipes]
+verify_jwt = true
