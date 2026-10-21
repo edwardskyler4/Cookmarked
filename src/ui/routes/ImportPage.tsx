@@ -1,13 +1,34 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import type { RecipeService } from "../../services/recipeService";
+import { RecipeSaveError } from "../../domain/repositories/RecipeApiRepository";
+
+const urlMessage = "Source URL must start with https:// or be empty.";
+const servingsMessage =
+  "Serving Size must be an integer between -2147483648 and 2147483647.";
 
 // Grid layout puts each label above its field with a small, consistent gap.
 const fieldStyle = { display: "grid", gap: "0.5rem" } as const;
 
-export default function ImportPage() {
+export default function ImportPage({
+  recipeService,
+}: {
+  recipeService: RecipeService;
+}) {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [checked, setChecked] = useState(false);
 
-  // These are input-format checks only; no recipe is sent to storage.
+  const [pending, setPending] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const submitting = useRef(false);
+  const savedMessage = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    // Focusing also brings the confirmation into view after saving at the bottom.
+    if (saved) savedMessage.current?.focus();
+  }, [saved]);
+
+  // Immediate input feedback; the Edge Function independently enforces the rules.
   function validate(form: HTMLFormElement) {
     const nextErrors: Record<string, string> = {};
     const fields = Array.from(form.elements).filter(
@@ -21,16 +42,97 @@ export default function ImportPage() {
           .getElementById(`${field.name}-label`)
           ?.textContent?.replace(" (Required)", "");
         nextErrors[field.name] = `${label} is required.`;
+      } else if (field.name === "source" && field.value.trim()) {
+        const url = field.value.trim();
+        try {
+          if (!/^https:\/\/[^/\s]/.test(url) || !new URL(url).hostname)
+            throw new Error();
+        } catch {
+          nextErrors.source = urlMessage;
+        }
+      } else if (field.name === "servingSize") {
+        const value = field.value.trim();
+        const servings = Number(value);
+        if (
+          !/^[+-]?\d+$/.test(value) ||
+          !Number.isInteger(servings) ||
+          servings < -2147483648 ||
+          servings > 2147483647
+        )
+          nextErrors.servingSize = servingsMessage;
       } else if (
-        field instanceof HTMLInputElement &&
-        field.validity.typeMismatch
+        (field.name === "title" || field.name === "prepTime") &&
+        field.value.trim().length > 45
       ) {
-        nextErrors[field.name] = "Enter a valid Source URL or leave it blank.";
+        nextErrors[field.name] = "Use 45 characters or fewer.";
       }
     }
     setErrors(nextErrors);
     setChecked(true);
     fields.find((field) => nextErrors[field.name])?.focus();
+    return Object.keys(nextErrors).length === 0;
+  }
+
+  async function save(form: HTMLFormElement) {
+    if (submitting.current) return;
+    setSaved(false);
+    setSaveError(null);
+    if (!validate(form)) return;
+    const values = new FormData(form);
+    const text = (name: string) => String(values.get(name) ?? "").trim();
+    submitting.current = true;
+    setPending(true);
+    try {
+      await recipeService.create({
+        title: text("title"),
+        prepTime: text("prepTime"),
+        servings: Number(text("servingSize")),
+        ingredients: text("ingredients"),
+        instructions: text("directions"),
+        mealType: text("mealType"),
+        course: text("course"),
+        url: text("source"),
+        note: text("notes"),
+        nutritionInfo: text("nutrition"),
+      });
+      form.reset();
+      setSaved(true);
+    } catch (failure) {
+      if (
+        failure instanceof RecipeSaveError &&
+        failure.code === "invalid_input" &&
+        failure.field
+      ) {
+        const fieldNames: Record<string, string> = {
+          url: "source",
+          servings: "servingSize",
+          instructions: "directions",
+          note: "notes",
+          nutritionInfo: "nutrition",
+        };
+        const field = fieldNames[failure.field] ?? failure.field;
+        setErrors({
+          [field]:
+            field === "source"
+              ? urlMessage
+              : field === "servingSize"
+                ? servingsMessage
+                : "Check this field and try again.",
+        });
+      } else {
+        setSaveError(
+          failure instanceof RecipeSaveError && failure.code === "unauthorized"
+            ? "Your session has expired. Please log in again."
+            : failure instanceof RecipeSaveError &&
+                failure.code === "profile_not_found"
+              ? "Your account profile is missing. Contact your Cookmarked administrator."
+              : "Unable to save recipe. Please try again.",
+        );
+      }
+    } finally {
+      submitting.current = false;
+      setPending(false);
+    }
   }
 
   function validationAttributes(name: string) {
@@ -62,25 +164,38 @@ export default function ImportPage() {
       <h3 id="recipe-heading">New Recipe</h3>
       <form
         className="recipe-editor-form"
+        noValidate
+        onSubmit={(event) => {
+          event.preventDefault();
+          void save(event.currentTarget);
+        }}
         onReset={() => {
           setErrors({});
           setChecked(false);
+          setSaved(false);
+          setSaveError(null);
         }}
       >
-        {checked &&
-          (Object.keys(errors).length > 0 ? (
-            <div
-              className="editor-feedback editor-validation-error"
-              role="alert"
-            >
-              Cannot save recipe. Fix the highlighted fields below.
-            </div>
-          ) : (
-            <div className="editor-feedback" role="status">
-              Required fields are complete. This recipe has not been saved
-              because saving is not connected yet.
-            </div>
-          ))}
+        {saveError && (
+          <div className="editor-feedback editor-validation-error" role="alert">
+            {saveError}
+          </div>
+        )}
+        {checked && Object.keys(errors).length > 0 && (
+          <div className="editor-feedback editor-validation-error" role="alert">
+            Cannot save recipe. Fix the highlighted fields below.
+          </div>
+        )}
+        {saved && (
+          <div
+            className="editor-feedback editor-success"
+            role="status"
+            tabIndex={-1}
+            ref={savedMessage}
+          >
+            Recipe saved
+          </div>
+        )}
         {/* Wrapping each control in its label associates that label with only that field. */}
         <label className="editor-field" style={fieldStyle}>
           <span id="source-label">Source URL</span>
@@ -94,6 +209,7 @@ export default function ImportPage() {
           <input
             type="text"
             name="title"
+            maxLength={45}
             {...validationAttributes("title")}
             required
           />
@@ -131,6 +247,7 @@ export default function ImportPage() {
             <input
               type="text"
               name="prepTime"
+              maxLength={45}
               {...validationAttributes("prepTime")}
               required
               placeholder="e.g. 30 min"
@@ -146,7 +263,8 @@ export default function ImportPage() {
               name="servingSize"
               {...validationAttributes("servingSize")}
               required
-              placeholder="e.g. 4 servings"
+              inputMode="numeric"
+              placeholder="e.g. 4"
             />
             {fieldError("servingSize")}
           </label>
@@ -184,16 +302,15 @@ export default function ImportPage() {
           <textarea name="notes" rows={4} />
         </label>
         <div className="editor-actions">
-          <button className="filter-chip" type="reset">
+          <button className="filter-chip" type="reset" disabled={pending}>
             Clear
           </button>
-          {/* Persistence will be connected in the next step. */}
           <button
             className="filter-chip active"
-            type="button"
-            onClick={(event) => validate(event.currentTarget.form!)}
+            type="submit"
+            disabled={pending}
           >
-            Save
+            {pending ? "Saving…" : "Save"}
           </button>
         </div>
       </form>

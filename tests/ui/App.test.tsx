@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { fakeRecipeService } from "../fakes/recipeService";
 
 import { cleanup, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
@@ -10,7 +11,12 @@ afterEach(cleanup);
 
 describe("Cookmarked home", () => {
   it("shows the recipe library on startup", async () => {
-    render(<App authService={fakeAuthService().service} />);
+    render(
+      <App
+        recipeService={fakeRecipeService()}
+        authService={fakeAuthService().service}
+      />,
+    );
     await screen.findByRole("searchbox");
 
     expect(screen.getByRole("heading", { name: "Cookmarked" })).toBeDefined();
@@ -24,7 +30,12 @@ describe("Cookmarked home", () => {
   });
 
   it("marks home as the current navigation page on startup", async () => {
-    render(<App authService={fakeAuthService().service} />);
+    render(
+      <App
+        recipeService={fakeRecipeService()}
+        authService={fakeAuthService().service}
+      />,
+    );
     await screen.findByRole("searchbox");
 
     const navigation = within(

@@ -4,6 +4,7 @@ import ImportPage from "./ui/routes/ImportPage";
 import SettingsPage from "./ui/routes/SettingsPage";
 import LoginPage from "./ui/routes/LoginPage";
 import "./App.css";
+import type { RecipeService } from "./services/recipeService";
 import type { AuthService } from "./services/authService";
 import type { AuthUser } from "./domain/models/AuthUser";
 
@@ -64,7 +65,9 @@ function SignedInApp({
   pending,
   darkMode,
   onSaveDarkMode,
+  recipeService,
 }: {
+  recipeService: RecipeService;
   user: AuthUser;
   onLogout: () => void;
   pending: boolean;
@@ -143,7 +146,7 @@ function SignedInApp({
             </>
           )}
           {page === "planner" && <PlannerPage />}
-          {page === "import" && <ImportPage />}
+          {page === "import" && <ImportPage recipeService={recipeService} />}
           {page === "settings" && (
             <SettingsPage
               username={user.username}
@@ -170,7 +173,13 @@ function SignedInApp({
   );
 }
 
-export default function App({ authService }: { authService: AuthService }) {
+export default function App({
+  authService,
+  recipeService,
+}: {
+  authService: AuthService;
+  recipeService: RecipeService;
+}) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -234,6 +243,7 @@ export default function App({ authService }: { authService: AuthService }) {
           </p>
         )}
         <SignedInApp
+          recipeService={recipeService}
           key={user.id}
           user={user}
           onLogout={logout}

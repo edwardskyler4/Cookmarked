@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { fakeRecipeService } from "../fakes/recipeService";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import App from "../../src/App";
@@ -10,19 +11,24 @@ function fillCredentials() {
     target: { value: "Kyler" },
   });
   fireEvent.change(screen.getByLabelText("Password"), {
-    target: { value: "password123" },
+    target: { value: "Password123!" },
   });
 }
 describe("authentication UI", () => {
   it("hides the library while restoring a session", () => {
     const { service } = fakeAuthService();
     service.restore = () => new Promise(() => {});
-    render(<App authService={service} />);
+    render(<App recipeService={fakeRecipeService()} authService={service} />);
     expect(screen.getByRole("status").textContent).toContain("Checking");
     expect(screen.queryByRole("searchbox")).toBeNull();
   });
   it("sends signed-out users to login with no app navigation", async () => {
-    render(<App authService={fakeAuthService(null).service} />);
+    render(
+      <App
+        recipeService={fakeRecipeService()}
+        authService={fakeAuthService(null).service}
+      />,
+    );
     await screen.findByRole("heading", { name: "Login" });
     expect(screen.queryByRole("navigation")).toBeNull();
     expect(screen.queryByRole("searchbox")).toBeNull();
@@ -30,35 +36,35 @@ describe("authentication UI", () => {
   });
   it("opens the library after login", async () => {
     const { service } = fakeAuthService(null);
-    render(<App authService={service} />);
+    render(<App recipeService={fakeRecipeService()} authService={service} />);
     await screen.findByRole("heading", { name: "Login" });
     fillCredentials();
     fireEvent.click(screen.getByRole("button", { name: "Log in" }));
     await screen.findByRole("searchbox");
-    expect(service.login).toHaveBeenCalledWith("Kyler", "password123");
+    expect(service.login).toHaveBeenCalledWith("Kyler", "Password123!");
     expect(screen.getByText("kyler")).toBeDefined();
   });
   it("signs in immediately after registration", async () => {
     const { service } = fakeAuthService(null);
-    render(<App authService={service} />);
+    render(<App recipeService={fakeRecipeService()} authService={service} />);
     await screen.findByRole("heading", { name: "Login" });
     fireEvent.click(screen.getByRole("button", { name: "Create account" }));
     fillCredentials();
     fireEvent.change(screen.getByLabelText("Confirm password"), {
-      target: { value: "password123" },
+      target: { value: "Password123!" },
     });
     fireEvent.click(screen.getByRole("button", { name: "Register" }));
     await screen.findByRole("searchbox");
-    expect(service.register).toHaveBeenCalledWith("Kyler", "password123");
+    expect(service.register).toHaveBeenCalledWith("Kyler", "Password123!");
   });
   it("rejects a mismatched password confirmation", async () => {
     const { service } = fakeAuthService(null);
-    render(<App authService={service} />);
+    render(<App recipeService={fakeRecipeService()} authService={service} />);
     await screen.findByRole("heading", { name: "Login" });
     fireEvent.click(screen.getByRole("button", { name: "Create account" }));
     fillCredentials();
     fireEvent.change(screen.getByLabelText("Confirm password"), {
-      target: { value: "different" },
+      target: { value: "Different123!" },
     });
     fireEvent.click(screen.getByRole("button", { name: "Register" }));
     expect(screen.getByRole("alert").textContent).toContain(
@@ -71,7 +77,7 @@ describe("authentication UI", () => {
     service.login = vi
       .fn()
       .mockRejectedValue(new AuthenticationError("invalid_credentials"));
-    render(<App authService={service} />);
+    render(<App recipeService={fakeRecipeService()} authService={service} />);
     await screen.findByRole("heading", { name: "Login" });
     fillCredentials();
     fireEvent.click(screen.getByRole("button", { name: "Log in" }));
@@ -83,7 +89,7 @@ describe("authentication UI", () => {
   it("disables submission while login is pending", async () => {
     const { service } = fakeAuthService(null);
     service.login = () => new Promise(() => {});
-    render(<App authService={service} />);
+    render(<App recipeService={fakeRecipeService()} authService={service} />);
     await screen.findByRole("heading", { name: "Login" });
     fillCredentials();
     fireEvent.click(screen.getByRole("button", { name: "Log in" }));
@@ -97,7 +103,7 @@ describe("authentication UI", () => {
     "returns from %s to login when the session ends",
     async (page) => {
       const { service, emit } = fakeAuthService();
-      render(<App authService={service} />);
+      render(<App recipeService={fakeRecipeService()} authService={service} />);
       await screen.findByRole("searchbox");
       fireEvent.click(screen.getByRole("button", { name: page }));
       const { act } = await import("@testing-library/react");
@@ -108,7 +114,7 @@ describe("authentication UI", () => {
   );
   it("returns to login after logout", async () => {
     const { service } = fakeAuthService();
-    render(<App authService={service} />);
+    render(<App recipeService={fakeRecipeService()} authService={service} />);
     await screen.findByRole("searchbox");
     fireEvent.click(screen.getByRole("button", { name: "Log out" }));
     await screen.findByRole("heading", { name: "Login" });
@@ -120,7 +126,7 @@ describe("authentication UI", () => {
       .fn()
       .mockRejectedValueOnce(new Error("offline"))
       .mockResolvedValueOnce(signedInUser);
-    render(<App authService={service} />);
+    render(<App recipeService={fakeRecipeService()} authService={service} />);
     await screen.findByRole("alert");
     expect(screen.queryByRole("searchbox")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Retry" }));
@@ -133,7 +139,7 @@ describe("authentication UI", () => {
       new Promise((resolve) => {
         finish = resolve;
       });
-    render(<App authService={service} />);
+    render(<App recipeService={fakeRecipeService()} authService={service} />);
     const { act } = await import("@testing-library/react");
     act(() => emit(null));
     await screen.findByRole("heading", { name: "Login" });
@@ -143,7 +149,7 @@ describe("authentication UI", () => {
   it("reports logout failure", async () => {
     const { service } = fakeAuthService();
     service.logout = vi.fn().mockRejectedValue(new Error("offline"));
-    render(<App authService={service} />);
+    render(<App recipeService={fakeRecipeService()} authService={service} />);
     await screen.findByRole("searchbox");
     fireEvent.click(screen.getByRole("button", { name: "Log out" }));
     expect((await screen.findByRole("alert")).textContent).toContain(

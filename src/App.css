@@ -954,3 +954,14 @@ button:disabled {
   border-color: var(--editor-error-color);
   color: var(--editor-error-color);
 }
+
+.editor-success {
+  color: #15803d;
+  border-color: #15803d;
+  background-color: #f0fdf4;
+}
+.dark-theme .editor-success {
+  color: #86efac;
+  border-color: #86efac;
+  background-color: #14532d;
+}
