@@ -382,3 +382,484 @@ button:disabled {
   cursor: wait;
 }
 
+
+
+/* weekly meal planner */
+
+
+.planner-page {
+  min-width: 0;
+  overflow: hidden;
+}
+
+/* Weekly / Monthly tabs */
+.calendar-tabs {
+  display: flex;
+  gap: 8px;
+  margin-top: 16px;
+  border-bottom: 2px solid var(--color-placeholder);
+}
+
+.calendar-tabs button {
+  padding: 10px 16px;
+  border: 1px solid var(--color-placeholder);
+  border-bottom: none;
+  border-radius: 8px 8px 0 0;
+  background: var(--color-surface);
+  color: var(--color-ink);
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.calendar-tabs button:hover,
+.calendar-tabs button.active {
+  background: var(--color-ink);
+  color: var(--color-white);
+}
+
+.week-navigation {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.week-navigation button {
+  padding: 8px 12px;
+  border: 1px solid var(--color-placeholder);
+  border-radius: 8px;
+  background: var(--color-white);
+  color: var(--color-ink);
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.week-navigation button:hover {
+  background: var(--color-placeholder);
+}
+
+.planner-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 24px;
+  align-items: stretch;
+}
+
+.planner-day {
+  min-width: 0;
+  padding: 10px 6px;
+  border: 1px solid var(--color-ink);
+  border-radius: 12px;
+  background: var(--color-white);
+  transition: background-color 0.2s ease;
+}
+
+.planner-day h3 {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding-bottom: 8px;
+  border-bottom: 2px solid var(--color-ink);
+  font-size: 0.85rem;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.planner-date {
+  color: var(--color-muted);
+  font-size: 0.8rem;
+  font-weight: 400;
+}
+
+.planner-meals {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.planner-meal {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  min-height: 75px;
+  padding: 10px 6px;
+  border: 1px solid var(--color-placeholder);
+  border-radius: 8px;
+  background: var(--color-surface);
+  color: var(--color-ink);
+  font-size: 0.75rem;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+  transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.planner-meal:hover {
+  border-color: var(--color-ink);
+  background: var(--color-placeholder);
+}
+
+.planner-meal:focus-visible {
+  outline: 2px solid var(--color-ink);
+  outline-offset: 2px;
+}
+
+.planner-meal strong {
+  font-size: 0.8rem;
+  text-transform: capitalize;
+}
+
+.assigned-recipes {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.assigned-recipe {
+  padding: 5px 7px;
+  border-radius: 5px;
+  background: var(--color-placeholder);
+  color: var(--color-ink);
+  overflow-wrap: anywhere;
+}
+
+.empty-meal {
+  margin: 0;
+  color: var(--color-muted);
+  font-size: 0.7rem;
+  line-height: 1.4;
+}
+
+/* Monthly calendar: compact date boxes, separate from the weekly planner */
+.monthly-calendar-wrap {
+  margin-top: 24px;
+  min-width: 0;
+}
+
+.monthly-weekdays,
+.monthly-planner-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.monthly-weekdays {
+  margin-bottom: 8px;
+  color: var(--color-muted);
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-align: center;
+}
+
+.monthly-weekdays > div {
+  padding: 6px 2px;
+}
+
+.monthly-day-box,
+.monthly-empty-day {
+  min-width: 0;
+  min-height: 88px;
+  border: 1px solid var(--color-placeholder);
+  border-radius: 10px;
+}
+
+.monthly-day-box {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 8px;
+  background: var(--color-white);
+  color: var(--color-ink);
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+.monthly-day-box:hover,
+.monthly-day-box.selected {
+  border-color: var(--color-ink);
+  background: var(--color-placeholder);
+}
+
+.monthly-day-box:focus-visible {
+  outline: 2px solid var(--color-ink);
+  outline-offset: 2px;
+}
+
+.monthly-day-number {
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.monthly-recipe-count {
+  padding: 3px 5px;
+  border-radius: 5px;
+  background: var(--color-surface);
+  font-size: 0.68rem;
+  overflow-wrap: anywhere;
+}
+
+.monthly-day-hint {
+  color: var(--color-muted);
+  font-size: 0.62rem;
+  line-height: 1.25;
+}
+
+.monthly-meal-picker > p {
+  color: var(--color-muted);
+}
+
+.recipe-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 12px;
+  min-width: 0;
+  margin-top: 24px;
+  padding: 20px;
+  border: 1px solid var(--color-placeholder);
+  border-radius: 12px;
+  background: var(--color-surface);
+  color: var(--color-ink);
+}
+
+.recipe-panel h3,
+.recipe-panel h4 {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.recipe-panel h3 {
+  font-size: 1.2rem;
+}
+
+.recipe-panel h4 {
+  font-size: 1rem;
+}
+
+.recipe-panel p {
+  margin: 0;
+  line-height: 1.5;
+}
+
+.recipe-panel ul {
+  margin: 0;
+  padding-left: 22px;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+
+.recipe-panel label {
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.recipe-panel select,
+.recipe-panel input,
+.recipe-panel textarea {
+  width: 100%;
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--color-placeholder);
+  border-radius: 8px;
+  background: var(--color-white);
+  color: var(--color-ink);
+  font: inherit;
+}
+
+.recipe-panel textarea {
+  min-height: 90px;
+  resize: vertical;
+}
+
+.recipe-panel select:focus,
+.recipe-panel input:focus,
+.recipe-panel textarea:focus {
+  outline: 2px solid var(--color-ink);
+  outline-offset: 2px;
+}
+
+.recipe-panel button {
+  padding: 10px 14px;
+  border: 1px solid var(--color-ink);
+  border-radius: 8px;
+  background: var(--color-white);
+  color: var(--color-ink);
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: background-color 0.2s ease, opacity 0.2s ease;
+}
+
+.recipe-panel button:hover {
+  background: var(--color-placeholder);
+}
+
+.recipe-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.recipe-actions button {
+  padding: 10px 16px;
+  border: 1px solid var(--color-ink);
+  border-radius: 8px;
+  background: var(--color-white);
+  color: var(--color-ink);
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.recipe-actions button:hover {
+  background: var(--color-placeholder);
+}
+
+.add-recipe {
+  display: flex;
+  gap: 10px;
+  margin-top: 20px;
+  margin-bottom: 20px;
+}
+
+.add-recipe input {
+  flex: 1;
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--color-placeholder);
+  border-radius: 8px;
+  background: var(--color-white);
+  color: var(--color-ink);
+  font-size: 0.9rem;
+}
+
+.add-recipe button {
+  padding: 10px 16px;
+  border: none;
+  border-radius: 8px;
+  background: var(--color-ink);
+  color: var(--color-white);
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: opacity 0.2s ease;
+}
+
+.add-recipe button:hover {
+  opacity: 0.8;
+}
+
+.add-recipe input:focus {
+  outline: 2px solid var(--color-ink);
+  outline-offset: 2px;
+}
+
+@media (max-width: 699px) {
+  .planner-grid:not(.monthly-planner-grid) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .planner-day {
+    padding: 12px 8px;
+  }
+
+  .planner-meal {
+    min-height: 55px;
+  }
+
+  .recipe-panel {
+    padding: 16px;
+  }
+
+  .monthly-day-box,
+  .monthly-empty-day {
+    min-height: 72px;
+    padding: 6px;
+  }
+
+  .monthly-day-hint {
+    display: none;
+  }
+
+  .week-navigation {
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 575px) { 
+  .monthly-planner-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 380px) {
+  .planner-grid:not(.monthly-planner-grid) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .week-navigation {
+    flex-wrap: wrap;
+    justify-content: flex-start;
+  }
+
+  .week-navigation button {
+    padding: 8px;
+    font-size: 0.8rem;
+  }
+
+  .planner-meal {
+    min-height: 44px;
+  }
+
+  .recipe-actions {
+    flex-direction: column;
+  }
+
+  .recipe-actions button,
+  .recipe-panel button {
+    width: 100%;
+  }
+
+  .add-recipe {
+    flex-direction: column;
+  }
+
+  .add-recipe button {
+    width: 100%;
+  }
+
+  .calendar-tabs button {
+    flex: 1;
+  }
+  .monthly-planner-grid {
+    grid-template-columns: repeat(1, minmax(0, 1fr));
+  }
+  .monthly-weekdays,
+  .monthly-planner-grid {
+    gap: 4px;
+  }
+
+  .monthly-day-box,
+  .monthly-empty-day {
+    min-height: 54px;
+    border-radius: 6px;
+    padding: 4px;
+  }
+
+  .monthly-recipe-count {
+    font-size: 0.58rem;
+    padding: 2px 3px;
+  }
+}
+
+
