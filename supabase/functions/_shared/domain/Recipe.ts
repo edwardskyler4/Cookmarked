@@ -40,3 +40,7 @@ export interface Recipe extends RecipeInput {
 export interface RecipeCreator {
   create(authUserId: string, input: RecipeInput): Promise<Recipe>;
 }
+
+export interface RecipeReader {
+  list(authUserId: string): Promise<Recipe[]>;
+}

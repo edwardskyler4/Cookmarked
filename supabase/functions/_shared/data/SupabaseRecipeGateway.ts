@@ -3,6 +3,7 @@ import type {
   Recipe,
   RecipeCreator,
   RecipeInput,
+  RecipeReader,
 } from "../domain/Recipe.ts";
 
 type ProfileRow = {
@@ -51,10 +52,10 @@ function toRecipe(row: RecipeRow): Recipe {
   };
 }
 
-export class SupabaseRecipeGateway implements RecipeCreator {
+export class SupabaseRecipeGateway implements RecipeCreator, RecipeReader {
   constructor(private readonly client: SupabaseClient) {}
 
-  async create(authUserId: string, input: RecipeInput): Promise<Recipe> {
+  private async resolveProfile(authUserId: string): Promise<ProfileRow> {
     const { data: profiles, error: profileError } = await this.client
       .from("profile")
       .select("user_id")
@@ -65,7 +66,29 @@ export class SupabaseRecipeGateway implements RecipeCreator {
       throw new Error("Unable to resolve the authenticated profile.");
     }
 
-    const profile = profiles[0] as ProfileRow;
+    return profiles[0] as ProfileRow;
+  }
+
+  async list(authUserId: string): Promise<Recipe[]> {
+    const profile = await this.resolveProfile(authUserId);
+    const { data, error } = await this.client
+      .from("recipe")
+      .select(
+        "recipe_id,user_id,title,description,ingredients,instructions,prep_time,cook_time,servings,meal_type,course,shared_from_platform,url,media_type,thumbnail_url,created_at,updated_at",
+      )
+      .eq("user_id", profile.user_id)
+      .order("created_at", { ascending: false })
+      .returns<RecipeRow[]>();
+
+    if (error || !data) {
+      throw new Error(`Unable to list recipes: ${error?.message ?? "unknown error"}`);
+    }
+
+    return data.map(toRecipe);
+  }
+
+  async create(authUserId: string, input: RecipeInput): Promise<Recipe> {
+    const profile = await this.resolveProfile(authUserId);
     const { data, error } = await this.client
       .from("recipe")
       .insert({

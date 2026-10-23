@@ -3,6 +3,7 @@
 import { cleanup, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import App from "../../src/App";
+import type { RecipeReader } from "../../src/domain/repositories/RecipeReader";
 
 import { fakeAuthService } from "../fakes/authService";
 
@@ -10,7 +11,26 @@ afterEach(cleanup);
 
 describe("Cookmarked home", () => {
   it("shows the recipe library on startup", async () => {
-    render(<App authService={fakeAuthService().service} />);
+    const recipeReader: RecipeReader = {
+      list: async () => [
+        {
+          recipeId: 7,
+          userId: 42,
+          title: "Tomato Pasta",
+          mealType: "Dinner",
+          course: "Entree",
+          prepTime: "20 min",
+          createdAt: new Date("2026-01-01T00:00:00.000Z"),
+          updatedAt: new Date("2026-01-01T00:00:00.000Z"),
+        },
+      ],
+    };
+    render(
+      <App
+        authService={fakeAuthService().service}
+        recipeReader={recipeReader}
+      />,
+    );
     await screen.findByRole("searchbox");
 
     expect(screen.getByRole("heading", { name: "Cookmarked" })).toBeDefined();
@@ -19,8 +39,8 @@ describe("Cookmarked home", () => {
       screen.getByRole("searchbox", { name: "Search recipes" }),
     ).toBeDefined();
     expect(
-      screen.getAllByRole("heading", { name: "Recipe Name" }),
-    ).toHaveLength(4);
+      await screen.findByRole("heading", { name: "Tomato Pasta" }),
+    ).toBeDefined();
   });
 
   it("marks home as the current navigation page on startup", async () => {

@@ -4,11 +4,15 @@ import App from "./App";
 import { supabase } from "./data/supabaseClient";
 import { SupabaseAuthRepository } from "./data/repositories/SupabaseAuthRepository";
 import { createAuthService } from "./services/authService";
+import { SupabaseRecipeRepository } from "./data/repositories/SupabaseRecipeRepository";
 
 const authService = createAuthService(new SupabaseAuthRepository(supabase));
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <App authService={authService} />
+    <App
+      authService={authService}
+      recipeReader={new SupabaseRecipeRepository(supabase)}
+    />
   </StrictMode>,
 );
