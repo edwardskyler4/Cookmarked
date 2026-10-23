@@ -4,6 +4,7 @@ import ImportPage from "./ui/routes/ImportPage";
 import SettingsPage from "./ui/routes/SettingsPage";
 import LoginPage from "./ui/routes/LoginPage";
 import "./App.css";
+import type { RecipeService } from "./services/recipeService";
 import type { AuthService } from "./services/authService";
 import type { AuthUser } from "./domain/models/AuthUser";
 import type { Recipe } from "./domain/models/Recipe";
@@ -66,8 +67,10 @@ function SignedInApp({
   pending,
   darkMode,
   onSaveDarkMode,
+  recipeService,
   recipeReader,
 }: {
+  recipeService: RecipeService;
   user: AuthUser;
   onLogout: () => void;
   pending: boolean;
@@ -176,7 +179,7 @@ function SignedInApp({
             </>
           )}
           {page === "planner" && <PlannerPage />}
-          {page === "import" && <ImportPage />}
+          {page === "import" && <ImportPage recipeService={recipeService} />}
           {page === "settings" && (
             <SettingsPage
               username={user.username}
@@ -207,9 +210,11 @@ const emptyRecipeReader: RecipeReader = { list: async () => [] };
 
 export default function App({
   authService,
+  recipeService,
   recipeReader = emptyRecipeReader,
 }: {
   authService: AuthService;
+  recipeService: RecipeService;
   recipeReader?: RecipeReader;
 }) {
   const [user, setUser] = useState<AuthUser | null>(null);
@@ -275,6 +280,7 @@ export default function App({
           </p>
         )}
         <SignedInApp
+          recipeService={recipeService}
           key={user.id}
           user={user}
           onLogout={logout}

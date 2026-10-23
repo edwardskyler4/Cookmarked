@@ -84,7 +84,7 @@ changing it requires an account migration. Passwords require at least 8 characte
 Registration signs the user in immediately. All app pages require a session;
 registration and login are the only public screens. Password recovery is handled
 manually by an administrator. The recipe library currently contains UI placeholders;
-recipe storage and its owner policies will be implemented with that feature.
+the recipe-add form saves through the `recipes_save` Edge Function with owner-scoped RLS.
 
 Credential rules run in the Supabase Edge Function business layer. Its data adapter
 calls Supabase Auth. The browser data adapter invokes the function and lets the SDK
@@ -179,3 +179,47 @@ For manual recovery, an authorized administrator verifies account ownership and
 uses Supabase's server-side Admin API `updateUserById` to change the password for
 the Auth UUID. Privileged credentials belong only in the administrator's secure
 backend/tooling. Do not send recovery emails or change the internal identifier.
+
+## Recipe creation
+
+The Import page saves manually entered recipes through the `recipes_save` Edge Function.
+The browser receives its service from `src/main.tsx`; validation and ownership rules
+live in `supabase/functions/_shared/services/createRecipe.ts`. The request handler
+verifies the bearer token using Supabase Auth. A fresh database client forwards the
+caller’s JWT so RLS applies; no service-role key is used.
+
+Title, prep time, serving size, ingredients, and directions remain required.
+Serving size must be an integer within PostgreSQL's integer range. Source URL must
+start with `https://` and be a valid URL, or be empty. Empty meal type and course
+become `N/A` in the Edge Function. Notes map to `note`, nutrition maps to
+`nutrition_info`, directions map to `instructions`, and Source URL maps to `url`.
+A successful save clears the form and shows “Recipe saved”; a failed save retains
+its inputs. The library still displays placeholders.
+
+Before using this feature in a development project:
+
+1. Ensure the existing `public.recipe` table uses the supplied schema, including
+   `note` and `nutrition_info`, and the signed-in account has a profile linked by
+   `profile.auth_user_id`.
+2. Apply `supabase/migrations/202610210001_recipe_ownership.sql`. This migration
+   assumes the recipe table already exists. It grants authenticated insert/select
+   access, limits both to the account's own profile, and leaves update/delete
+   access disabled. It does not create or alter recipe columns.
+3. The function reuses `AUTH_ALLOWED_ORIGINS` from the authentication setup.
+4. Deploy the Edge Function and rebuild/deploy the frontend:
+
+```sh
+pnpm exec supabase db push
+pnpm exec supabase functions deploy recipes_save
+pnpm deploy
+```
+
+`verify_jwt = false` in the function configuration lets the handler perform token
+verification with Auth; the endpoint still requires a verified bearer JWT before
+any profile lookup or insert.
+
+`pnpm test:run` covers recipe rules, SDK mappings using local HTTP responses,
+request authentication, and form states. `pnpm test:db` also checks recipe ownership
+in a disposable PostgreSQL container. Verify a manual save with two separate
+accounts in the development project after deployment; hosted services are not
+contacted by the automated tests.

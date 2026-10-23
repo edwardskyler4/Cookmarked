@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { fakeRecipeService } from "../fakes/recipeService";
 
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
@@ -12,7 +13,12 @@ describe("Cookmarked page shells", () => {
   it.each(["Planner", "Import", "Settings"])(
     "returns to the home library from %s",
     async (page) => {
-      render(<App authService={fakeAuthService().service} />);
+      render(
+        <App
+          recipeService={fakeRecipeService()}
+          authService={fakeAuthService().service}
+        />,
+      );
       await screen.findByRole("searchbox");
       fireEvent.click(screen.getByRole("button", { name: page }));
 
@@ -36,7 +42,12 @@ describe("Cookmarked page shells", () => {
   );
 
   it("returns to the home library after logging in again", async () => {
-    render(<App authService={fakeAuthService().service} />);
+    render(
+      <App
+        recipeService={fakeRecipeService()}
+        authService={fakeAuthService().service}
+      />,
+    );
     await screen.findByRole("searchbox");
     fireEvent.click(screen.getByRole("button", { name: "Planner" }));
     fireEvent.click(screen.getByRole("button", { name: "Log out" }));
@@ -45,7 +56,7 @@ describe("Cookmarked page shells", () => {
       target: { value: "kyler" },
     });
     fireEvent.change(screen.getByLabelText("Password"), {
-      target: { value: "password123" },
+      target: { value: "Password123!" },
     });
     fireEvent.click(screen.getByRole("button", { name: "Log in" }));
     await screen.findByRole("searchbox", { name: "Search recipes" });
@@ -56,7 +67,12 @@ describe("Cookmarked page shells", () => {
   });
 
   it("opens login after signing out from the header", async () => {
-    render(<App authService={fakeAuthService().service} />);
+    render(
+      <App
+        recipeService={fakeRecipeService()}
+        authService={fakeAuthService().service}
+      />,
+    );
     await screen.findByRole("searchbox");
     fireEvent.click(screen.getByRole("button", { name: "Log out" }));
     await screen.findByRole("heading", { name: "Login" });
@@ -65,7 +81,12 @@ describe("Cookmarked page shells", () => {
   });
 
   it("opens settings from the main navigation", async () => {
-    render(<App authService={fakeAuthService().service} />);
+    render(
+      <App
+        recipeService={fakeRecipeService()}
+        authService={fakeAuthService().service}
+      />,
+    );
     await screen.findByRole("searchbox");
 
     fireEvent.click(screen.getByRole("button", { name: "Settings" }));
@@ -85,7 +106,12 @@ describe("Cookmarked page shells", () => {
   });
 
   it("opens import from the main navigation", async () => {
-    render(<App authService={fakeAuthService().service} />);
+    render(
+      <App
+        recipeService={fakeRecipeService()}
+        authService={fakeAuthService().service}
+      />,
+    );
     await screen.findByRole("searchbox");
 
     fireEvent.click(screen.getByRole("button", { name: "Import" }));
@@ -105,7 +131,12 @@ describe("Cookmarked page shells", () => {
   });
 
   it("opens the planner from the main navigation", async () => {
-    render(<App authService={fakeAuthService().service} />);
+    render(
+      <App
+        recipeService={fakeRecipeService()}
+        authService={fakeAuthService().service}
+      />,
+    );
     await screen.findByRole("searchbox");
 
     fireEvent.click(screen.getByRole("button", { name: "Planner" }));

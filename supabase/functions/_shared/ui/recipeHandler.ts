@@ -1,88 +1,126 @@
 import type {
   RecipeCreator,
-  RecipeInput,
+  RecipeInput as LegacyRecipeInput,
   RecipeReader,
 } from "../domain/Recipe.ts";
+import { RecipeError, type RecipeRepository } from "../domain/RecipeRepository.ts";
 import { createRecipe } from "../services/createRecipe.ts";
 import { listRecipes } from "../services/listRecipes.ts";
 
-export async function handleRecipe(
-  request: Request,
-  authUserId: string,
-  repository: RecipeCreator & RecipeReader,
-  origins: string[],
-): Promise<Response> {
-  const origin = request.headers.get("Origin");
+type LegacyRepository = RecipeCreator & Partial<RecipeReader>;
+
+function responseHeaders(origin: string | null, origins: string[]): Headers {
   const headers = new Headers({
     "Content-Type": "application/json",
     "Cache-Control": "no-store",
     Vary: "Origin",
+    "Access-Control-Allow-Headers":
+      "authorization, apikey, content-type, x-client-info",
+    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
   });
+  if (origin && origins.includes(origin))
+    headers.set("Access-Control-Allow-Origin", origin);
+  return headers;
+}
 
-  if (origin && !origins.includes(origin)) {
-    return new Response(JSON.stringify({ code: "invalid_input" }), {
-      status: 403,
-      headers,
-    });
-  }
+function jsonResponse(status: number, body: unknown, headers: Headers): Response {
+  return new Response(JSON.stringify(body), { status, headers });
+}
 
-  if (origin) headers.set("Access-Control-Allow-Origin", origin);
-  headers.set(
-    "Access-Control-Allow-Headers",
-    "authorization, apikey, content-type, x-client-info",
-  );
-  headers.set("Access-Control-Allow-Methods", "POST, OPTIONS");
+export function handleRecipe(
+  request: Request,
+  authUserId: string,
+  repository: LegacyRepository,
+  origins: string[],
+): Promise<Response>;
 
+export function handleRecipe(
+  request: Request,
+  repository: RecipeRepository,
+  verifyToken: (token: string) => Promise<string | null>,
+  origins: string[],
+): Promise<Response>;
+
+export async function handleRecipe(
+  request: Request,
+  authOrRepository: string | RecipeRepository,
+  repositoryOrVerifier: LegacyRepository | ((token: string) => Promise<string | null>),
+  origins: string[],
+): Promise<Response> {
+  const origin = request.headers.get("Origin");
+  const headers = responseHeaders(origin, origins);
+
+  if (origin && !origins.includes(origin))
+    return jsonResponse(403, { code: "invalid_input" }, headers);
   if (request.method === "OPTIONS")
     return new Response(null, { status: 204, headers });
 
-  if (request.method === "GET") {
+  if (typeof authOrRepository === "string") {
+    const authUserId = authOrRepository;
+    const repository = repositoryOrVerifier as LegacyRepository;
+    if (request.method === "GET") {
+      if (!repository.list)
+        return jsonResponse(503, { code: "unavailable" }, headers);
+      try {
+        return jsonResponse(200, await listRecipes(repository, authUserId), headers);
+      } catch {
+        return jsonResponse(503, { code: "unavailable" }, headers);
+      }
+    }
+    if (request.method !== "POST")
+      return jsonResponse(405, { code: "invalid_input" }, headers);
+    let body: unknown;
     try {
-      const recipes = await listRecipes(repository, authUserId);
-      return new Response(JSON.stringify(recipes), { status: 200, headers });
+      body = await request.json();
     } catch {
-      return new Response(JSON.stringify({ code: "unavailable" }), {
-        status: 503,
+      return jsonResponse(400, { code: "invalid_input" }, headers);
+    }
+    if (!body || typeof body !== "object" || Array.isArray(body))
+      return jsonResponse(400, { code: "invalid_input" }, headers);
+    try {
+      return jsonResponse(
+        201,
+        await createRecipe(repository, authUserId, body as LegacyRecipeInput),
         headers,
-      });
+      );
+    } catch {
+      return jsonResponse(503, { code: "unavailable" }, headers);
     }
   }
 
-  if (request.method !== "POST") {
-    return new Response(JSON.stringify({ code: "invalid_input" }), {
-      status: 405,
-      headers,
-    });
-  }
-
-  let body: unknown;
+  const repository = authOrRepository as RecipeRepository;
+  const verifyToken = repositoryOrVerifier as (token: string) => Promise<string | null>;
+  if (request.method !== "POST")
+    return jsonResponse(405, { code: "invalid_input" }, headers);
   try {
-    body = await request.json();
-  } catch {
-    return new Response(JSON.stringify({ code: "invalid_input" }), {
-      status: 400,
+    const token = request.headers
+      .get("Authorization")
+      ?.match(/^Bearer\s+(\S+)$/i)?.[1];
+    if (!token) throw new RecipeError("unauthorized");
+    const authUserId = await verifyToken(token);
+    if (!authUserId) throw new RecipeError("unauthorized");
+    let body: unknown;
+    try {
+      body = await request.json();
+    } catch {
+      throw new RecipeError("invalid_input");
+    }
+    return jsonResponse(201, await createRecipe(repository, authUserId, body), headers);
+  } catch (error) {
+    const failure =
+      error instanceof RecipeError ? error : new RecipeError("unavailable");
+    const status =
+      failure.code === "unauthorized"
+        ? 401
+        : failure.code === "profile_not_found"
+          ? 403
+          : failure.code === "invalid_input"
+            ? 400
+            : 503;
+    return jsonResponse(
+      status,
+      { code: failure.code, ...(failure.field ? { field: failure.field } : {}) },
       headers,
-    });
-  }
-
-  if (!body || typeof body !== "object" || Array.isArray(body)) {
-    return new Response(JSON.stringify({ code: "invalid_input" }), {
-      status: 400,
-      headers,
-    });
-  }
-
-  try {
-    const recipe = await createRecipe(
-      repository,
-      authUserId,
-      body as RecipeInput,
     );
-    return new Response(JSON.stringify(recipe), { status: 201, headers });
-  } catch {
-    return new Response(JSON.stringify({ code: "unavailable" }), {
-      status: 503,
-      headers,
-    });
   }
 }
