@@ -7,3 +7,7 @@ verify_jwt = false
 # Recipe operations require a valid Supabase Auth JWT.
 [functions.recipes]
 verify_jwt = true
+
+# The handler validates the bearer JWT with Auth before any database operation.
+[functions.recipes_save]
+verify_jwt = false

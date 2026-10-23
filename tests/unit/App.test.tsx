@@ -1,3 +1,4 @@
+import { fakeRecipeService } from "../fakes/recipeService";
 import { renderToStaticMarkup } from "react-dom/server";
 import React from "react";
 import { describe, expect, it } from "vitest";
@@ -7,7 +8,10 @@ import { fakeAuthService } from "../fakes/authService";
 describe("Cookmarked homepage", () => {
   it("renders the branded loading shell before authentication", () => {
     const markup = renderToStaticMarkup(
-      <App authService={fakeAuthService().service} />,
+      <App
+        recipeService={fakeRecipeService()}
+        authService={fakeAuthService().service}
+      />,
     );
 
     expect(markup).toContain("Cookmarked");
