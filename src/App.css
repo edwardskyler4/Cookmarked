@@ -863,3 +863,94 @@ button:disabled {
 }
 
 
+.recipe-editor h3 {
+  margin: 8px 0 24px;
+  font-size: 1.5rem;
+  font-weight: 500;
+}
+.recipe-editor-form {
+  display: grid;
+  gap: 24px;
+}
+.editor-field {
+  min-width: 0;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+.editor-field input,
+.editor-field select,
+.editor-field textarea {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid var(--color-chip-border);
+  border-radius: 8px;
+  padding: 12px;
+  background: var(--color-white);
+  color: var(--color-ink);
+  font: inherit;
+  font-weight: 400;
+  line-height: 1.5;
+}
+.editor-field textarea {
+  resize: vertical;
+}
+.editor-field input:focus-visible,
+.editor-field select:focus-visible,
+.editor-field textarea:focus-visible {
+  outline: 2px solid var(--color-ink);
+  outline-offset: 2px;
+}
+.editor-field-row {
+  display: grid;
+  gap: 24px;
+}
+.field-hint {
+  color: var(--color-muted);
+  font-weight: 400;
+}
+.editor-actions {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  border-top: 1px solid var(--color-chip-border);
+  padding-top: 24px;
+}
+.editor-actions button {
+  min-width: 88px;
+  min-height: 44px;
+}
+@media (min-width: 700px) {
+  .editor-field-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.recipe-editor {
+  --editor-error-color: #9b2525;
+}
+.dark-theme .recipe-editor {
+  --editor-error-color: #ffb4ab;
+}
+.recipe-editor .editor-field [aria-invalid="true"] {
+  border-style: solid;
+  border-width: 2px;
+  border-color: var(--editor-error-color);
+}
+.editor-field-error {
+  color: var(--editor-error-color);
+  font-size: 0.85rem;
+  font-weight: 400;
+  line-height: 1.5;
+}
+.editor-feedback {
+  border: 1px solid var(--color-chip-border);
+  border-radius: 8px;
+  padding: 16px;
+  line-height: 1.5;
+}
+.editor-validation-error {
+  border-left-width: 4px;
+  border-left-style: solid;
+  border-color: var(--editor-error-color);
+  color: var(--editor-error-color);
+}
