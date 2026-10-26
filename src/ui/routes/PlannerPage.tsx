@@ -40,7 +40,7 @@ function createEmptyDay(name: string, date: string): Day {
   };
 }
 
-export default function PlannerPage() {
+export default function PlannerPage({ onAddRecipe = () => {} }: { onAddRecipe?: () => void }) {
   const [days, setDays] = useState<Day[]>([]);
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [weekOffset, setWeekOffset] = useState(0);
@@ -470,7 +470,7 @@ export default function PlannerPage() {
           )}
 
           <div className="recipe-actions">
-            <button onClick={() => setRecipeMode("add")}>
+            <button onClick={onAddRecipe}>
               Add Recipe
             </button>
 
@@ -621,3 +621,4 @@ export default function PlannerPage() {
     </section>
   );
 }
+

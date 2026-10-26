@@ -76,6 +76,10 @@ function SignedInApp({
 }) {
   const [page, setPage] = useState<Page>("home");
 
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [page]);
+
   return (
     <main className={darkMode ? "page-shell dark-theme" : "page-shell"}>
       <section className="app-shell" aria-label={`Cookmarked ${page}`}>
@@ -145,7 +149,7 @@ function SignedInApp({
               </div>
             </>
           )}
-          {page === "planner" && <PlannerPage />}
+          {page === "planner" && <PlannerPage onAddRecipe={() => setPage("import")} />}
           {page === "import" && <ImportPage recipeService={recipeService} />}
           {page === "settings" && (
             <SettingsPage
@@ -284,3 +288,8 @@ export default function App({
     </main>
   );
 }
+
+
+
+
+
