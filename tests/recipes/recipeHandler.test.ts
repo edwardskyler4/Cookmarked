@@ -185,4 +185,31 @@ describe("recipe handler", () => {
     expect(response.status).toBe(503);
     expect(await response.json()).toEqual({ code: "unavailable" });
   });
+
+  it("logs recipe-list failures while hiding database details", async () => {
+    const failure = new Error("profile lookup failed");
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const repo = {
+      create: vi.fn(),
+      list: vi.fn().mockRejectedValue(failure),
+    };
+
+    const response = await handleRecipe(
+      new Request("https://api.example/recipes", {
+        method: "GET",
+        headers: { Origin: origin },
+      }),
+      "user",
+      repo,
+      [origin],
+    );
+
+    expect(response.status).toBe(503);
+    expect(await response.json()).toEqual({ code: "unavailable" });
+    expect(errorSpy).toHaveBeenCalledWith(
+      "Unable to list recipes",
+      failure,
+    );
+    errorSpy.mockRestore();
+  });
 });
