@@ -63,7 +63,8 @@ export async function handleRecipe(
         return jsonResponse(503, { code: "unavailable" }, headers);
       try {
         return jsonResponse(200, await listRecipes(repository, authUserId), headers);
-      } catch {
+      } catch (error) {
+        console.error("Unable to list recipes", error);
         return jsonResponse(503, { code: "unavailable" }, headers);
       }
     }

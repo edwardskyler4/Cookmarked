@@ -3,6 +3,33 @@ import { describe, expect, it, vi } from "vitest";
 import { createRecipeRequestHandler } from "../../supabase/functions/recipes";
 
 describe("recipes Edge Function entry point", () => {
+  it("answers the browser preflight before requiring a JWT", async () => {
+    const handler = createRecipeRequestHandler({
+      supabaseUrl: "https://example.supabase.co",
+      supabaseAnonKey: "public-key",
+      origins: ["http://localhost:5173"],
+    });
+
+    const response = await handler(
+      new Request("https://example.test/recipes", {
+        method: "OPTIONS",
+        headers: {
+          Origin: "http://localhost:5173",
+          "Access-Control-Request-Method": "GET",
+          "Access-Control-Request-Headers": "authorization,apikey",
+        },
+      }),
+    );
+
+    expect(response.status).toBe(204);
+    expect(response.headers.get("Access-Control-Allow-Origin")).toBe(
+      "http://localhost:5173",
+    );
+    expect(response.headers.get("Access-Control-Allow-Methods")).toContain(
+      "GET",
+    );
+  });
+
   it("validates the JWT and lists the user's recipes", async () => {
     const fetch = vi
       .fn<typeof globalThis.fetch>()

@@ -30,6 +30,27 @@ function errorResponse(status: number): Response {
   });
 }
 
+function preflightResponse(request: Request, origins: string[]): Response {
+  const origin = request.headers.get("Origin");
+  const headers = new Headers({
+    "Cache-Control": "no-store",
+    Vary: "Origin",
+    "Access-Control-Allow-Headers":
+      "authorization, apikey, content-type, x-client-info",
+    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+  });
+
+  if (origin && !origins.includes(origin)) {
+    return new Response(JSON.stringify({ code: "invalid_input" }), {
+      status: 403,
+      headers,
+    });
+  }
+
+  if (origin) headers.set("Access-Control-Allow-Origin", origin);
+  return new Response(null, { status: 204, headers });
+}
+
 export function createRecipeRequestHandler({
   supabaseUrl,
   supabaseAnonKey,
@@ -37,6 +58,8 @@ export function createRecipeRequestHandler({
   createClient: makeClient = createClient,
 }: RecipeFunctionConfig): (request: Request) => Promise<Response> {
   return async (request: Request) => {
+    if (request.method === "OPTIONS") return preflightResponse(request, origins);
+
     const authorization = request.headers.get("Authorization");
     const token = authorization?.match(/^Bearer\s+(\S+)$/i)?.[1];
     if (!token || !authorization) return errorResponse(401);

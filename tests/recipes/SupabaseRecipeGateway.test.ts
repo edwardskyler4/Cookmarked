@@ -33,7 +33,7 @@ describe("SupabaseRecipeGateway", () => {
             recipe_id: 7,
             user_id: 42,
             title: "Tomato Pasta",
-            description: null,
+            note: "Family favorite",
             ingredients: null,
             instructions: null,
             prep_time: "10 min",
@@ -45,6 +45,7 @@ describe("SupabaseRecipeGateway", () => {
             url: null,
             media_type: null,
             thumbnail_url: null,
+            nutrition_info: "100 kcal",
             created_at: "2026-01-01T00:00:00.000Z",
             updated_at: "2026-01-01T00:00:00.000Z",
           },
@@ -58,6 +59,8 @@ describe("SupabaseRecipeGateway", () => {
         userId: 42,
         title: "Tomato Pasta",
         prepTime: "10 min",
+        note: "Family favorite",
+        nutritionInfo: "100 kcal",
       },
     ]);
 
@@ -69,6 +72,12 @@ describe("SupabaseRecipeGateway", () => {
     expect(new URL(recipeRequest.url).searchParams.get("user_id")).toBe(
       "eq.42",
     );
+    expect(new URL(recipeRequest.url).searchParams.get("select")).not.toContain(
+      "description",
+    );
+    expect(new URL(recipeRequest.url).searchParams.get("select")).toContain(
+      "note",
+    );
   });
 
   it("resolves the authenticated profile and inserts its recipe", async () => {
@@ -79,7 +88,7 @@ describe("SupabaseRecipeGateway", () => {
           recipe_id: 7,
           user_id: 42,
           title: "Tomato Pasta",
-          description: "A quick pasta dinner.",
+          note: "A quick pasta dinner.",
           ingredients: "Pasta\nTomatoes",
           instructions: "Boil pasta and add tomatoes.",
           prep_time: "10 min",
@@ -89,6 +98,7 @@ describe("SupabaseRecipeGateway", () => {
           course: "Entree",
           created_at: "2026-01-01T00:00:00.000Z",
           updated_at: "2026-01-01T00:00:00.000Z",
+          nutrition_info: null,
         },
       },
     ]);
@@ -130,7 +140,7 @@ describe("SupabaseRecipeGateway", () => {
     expect(await recipeRequest.json()).toEqual({
       user_id: 42,
       title: "Tomato Pasta",
-      description: "A quick pasta dinner.",
+      note: "A quick pasta dinner.",
       ingredients: "Pasta\nTomatoes",
       instructions: "Boil pasta and add tomatoes.",
       prep_time: "10 min",
