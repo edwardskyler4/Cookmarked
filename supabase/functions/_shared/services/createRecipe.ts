@@ -1,12 +1,3 @@
-import type { Recipe, RecipeCreator, RecipeInput } from "../domain/Recipe.ts";
-
-export function createRecipe(
-  creator: RecipeCreator,
-  authUserId: string,
-  input: RecipeInput,
-): Promise<Recipe> {
-  return creator.create(authUserId, input);
-}
 import {
   RecipeError,
   type RecipeRepository,
@@ -56,9 +47,21 @@ export async function createRecipe(
   )
     throw new RecipeError("invalid_input", "course");
   const url = text("url");
+  let normalizedUrl = url;
   if (url) {
+    const scheme = url.match(/^https?:\/\//i);
+    const singleSlashScheme = url.match(/^https?:\/(?!\/)/i);
+    normalizedUrl = scheme
+      ? url
+      : singleSlashScheme
+        ? `https://${url.slice(singleSlashScheme[0].length)}`
+        : `https://${url}`;
     try {
-      if (!/^https:\/\/[^/\s]/.test(url) || !new URL(url).hostname)
+      const hostname = new URL(normalizedUrl).hostname;
+      if (
+        !/^https?:\/\/[^/\s]/i.test(normalizedUrl) ||
+        !/\.[^.]+$/.test(hostname)
+      )
         throw new Error();
     } catch {
       throw new RecipeError("invalid_input", "url");
@@ -77,7 +80,7 @@ export async function createRecipe(
     instructions,
     mealType,
     course,
-    url,
+    url: normalizedUrl,
     note,
     nutritionInfo,
   });
