@@ -3,6 +3,7 @@ import type {
   Recipe,
   RecipeCreator,
   RecipeInput,
+  RecipeReader,
 } from "../domain/Recipe.ts";
 
 type ProfileRow = {
@@ -13,7 +14,7 @@ type RecipeRow = {
   recipe_id: number;
   user_id: number;
   title: string;
-  description: string | null;
+  note: string | null;
   ingredients: string | null;
   instructions: string | null;
   prep_time: string | null;
@@ -25,6 +26,7 @@ type RecipeRow = {
   url: string | null;
   media_type: string | null;
   thumbnail_url: string | null;
+  nutrition_info: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -34,7 +36,7 @@ function toRecipe(row: RecipeRow): Recipe {
     recipeId: row.recipe_id,
     userId: row.user_id,
     title: row.title,
-    description: row.description ?? undefined,
+    note: row.note ?? undefined,
     ingredients: row.ingredients ?? undefined,
     instructions: row.instructions ?? undefined,
     prepTime: row.prep_time ?? undefined,
@@ -46,15 +48,16 @@ function toRecipe(row: RecipeRow): Recipe {
     url: row.url ?? undefined,
     mediaType: row.media_type ?? undefined,
     thumbnailUrl: row.thumbnail_url ?? undefined,
+    nutritionInfo: row.nutrition_info ?? undefined,
     createdAt: new Date(row.created_at),
     updatedAt: new Date(row.updated_at),
   };
 }
 
-export class SupabaseRecipeGateway implements RecipeCreator {
+export class SupabaseRecipeGateway implements RecipeCreator, RecipeReader {
   constructor(private readonly client: SupabaseClient) {}
 
-  async create(authUserId: string, input: RecipeInput): Promise<Recipe> {
+  private async resolveProfile(authUserId: string): Promise<ProfileRow> {
     const { data: profiles, error: profileError } = await this.client
       .from("profile")
       .select("user_id")
@@ -65,13 +68,35 @@ export class SupabaseRecipeGateway implements RecipeCreator {
       throw new Error("Unable to resolve the authenticated profile.");
     }
 
-    const profile = profiles[0] as ProfileRow;
+    return profiles[0] as ProfileRow;
+  }
+
+  async list(authUserId: string): Promise<Recipe[]> {
+    const profile = await this.resolveProfile(authUserId);
+    const { data, error } = await this.client
+      .from("recipe")
+      .select(
+        "recipe_id,user_id,title,note,ingredients,instructions,prep_time,cook_time,servings,meal_type,course,created_at,updated_at,shared_from_platform,url,media_type,thumbnail_url,nutrition_info",
+      )
+      .eq("user_id", profile.user_id)
+      .order("created_at", { ascending: false })
+      .returns<RecipeRow[]>();
+
+    if (error || !data) {
+      throw new Error(`Unable to list recipes: ${error?.message ?? "unknown error"}`);
+    }
+
+    return data.map(toRecipe);
+  }
+
+  async create(authUserId: string, input: RecipeInput): Promise<Recipe> {
+    const profile = await this.resolveProfile(authUserId);
     const { data, error } = await this.client
       .from("recipe")
       .insert({
         user_id: profile.user_id,
         title: input.title,
-        description: input.description,
+        note: input.note ?? input.description,
         ingredients: input.ingredients,
         instructions: input.instructions,
         prep_time: input.prepTime,
@@ -83,9 +108,10 @@ export class SupabaseRecipeGateway implements RecipeCreator {
         url: input.url,
         media_type: input.mediaType,
         thumbnail_url: input.thumbnailUrl,
+        nutrition_info: input.nutritionInfo,
       })
       .select(
-        "recipe_id,user_id,title,description,ingredients,instructions,prep_time,cook_time,servings,meal_type,course,shared_from_platform,url,media_type,thumbnail_url,created_at,updated_at",
+        "recipe_id,user_id,title,note,ingredients,instructions,prep_time,cook_time,servings,meal_type,course,created_at,updated_at,shared_from_platform,url,media_type,thumbnail_url,nutrition_info",
       )
       .single<RecipeRow>();
 

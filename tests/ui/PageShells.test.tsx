@@ -27,9 +27,7 @@ describe("Cookmarked page shells", () => {
       expect(
         screen.getByRole("searchbox", { name: "Search recipes" }),
       ).toBeDefined();
-      expect(
-        screen.getAllByRole("heading", { name: "Recipe Name" }),
-      ).toHaveLength(4);
+      expect(screen.getByText("No recipes saved yet.")).toBeDefined();
       expect(screen.queryByRole("heading", { name: page })).toBeNull();
       expect(screen.getByText("Home / Library")).toBeDefined();
       expect(

@@ -6,6 +6,7 @@ import { SupabaseAuthRepository } from "./data/repositories/SupabaseAuthReposito
 import { createAuthService } from "./services/authService";
 import { SupabaseRecipeApiRepository } from "./data/repositories/SupabaseRecipeApiRepository";
 import { createRecipeService } from "./services/recipeService";
+import { SupabaseRecipeRepository } from "./data/repositories/SupabaseRecipeRepository";
 
 const recipeService = createRecipeService(
   new SupabaseRecipeApiRepository(supabase),
@@ -14,6 +15,10 @@ const authService = createAuthService(new SupabaseAuthRepository(supabase));
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <App authService={authService} recipeService={recipeService} />
+    <App
+      authService={authService}
+      recipeService={recipeService}
+      recipeReader={new SupabaseRecipeRepository(supabase)}
+    />
   </StrictMode>,
 );
