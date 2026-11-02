@@ -3,7 +3,11 @@ import type {
   RecipeCreator,
   RecipeInput as LegacyRecipeInput,
 } from "../domain/Recipe.ts";
-import { RecipeError, type RecipeRepository, type RecipeInput } from "../domain/RecipeRepository.ts";
+import { 
+  RecipeError, 
+  type RecipeRepository, 
+  type RecipeInput 
+} from "../domain/RecipeRepository.ts";
 
 export function createRecipe(creator: RecipeCreator, authUserId: string, input: LegacyRecipeInput): Promise<Recipe>;
 export function createRecipe(repository: RecipeRepository, authUserId: string, input: unknown): Promise<{ recipeId: number }>;
@@ -40,9 +44,22 @@ export async function createRecipe(
   if (!["Dessert", "Entree", "Side", "Beverage", "Appetizer", "N/A"].includes(course))
     throw new RecipeError("invalid_input", "course");
   const url = text("url");
+  let normalizedUrl = url;
   if (url) {
+    const scheme = url.match(/^https?:\/\//i);
+    const singleSlashScheme = url.match(/^https?:\/(?!\/)/i);
+    normalizedUrl = scheme
+      ? url
+      : singleSlashScheme
+        ? `https://${url.slice(singleSlashScheme[0].length)}`
+        : `https://${url}`;
     try {
-      if (!/^https:\/\/[^\/\s]/.test(url) || !new URL(url).hostname) throw new Error();
+      const hostname = new URL(normalizedUrl).hostname;
+      if (
+        !/^https?:\/\/[^/\s]/i.test(normalizedUrl) ||
+        !/\.[^.]+$/.test(hostname)
+      )
+        throw new Error();
     } catch {
       throw new RecipeError("invalid_input", "url");
     }
@@ -58,7 +75,7 @@ export async function createRecipe(
     instructions,
     mealType,
     course,
-    url,
+    url: normalizedUrl,
     note: text("note"),
     nutritionInfo: text("nutritionInfo"),
   };

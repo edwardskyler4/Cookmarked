@@ -3,7 +3,10 @@ import type {
   RecipeInput as LegacyRecipeInput,
   RecipeReader,
 } from "../domain/Recipe.ts";
-import { RecipeError, type RecipeRepository } from "../domain/RecipeRepository.ts";
+import { 
+  RecipeError, 
+  type RecipeRepository 
+} from "../domain/RecipeRepository.ts";
 import { createRecipe } from "../services/createRecipe.ts";
 import { listRecipes } from "../services/listRecipes.ts";
 
@@ -31,6 +34,7 @@ export function handleRecipe(
   request: Request,
   authUserId: string,
   repository: LegacyRepository,
+  creator: RecipeCreator,
   origins: string[],
 ): Promise<Response>;
 
@@ -44,6 +48,10 @@ export function handleRecipe(
 export async function handleRecipe(
   request: Request,
   authOrRepository: string | RecipeRepository,
+  repositoryOrAuthUserId: RecipeRepository | string,
+  verifyTokenOrCreator:
+    | ((token: string) => Promise<string | null>)
+    | RecipeCreator,
   repositoryOrVerifier: LegacyRepository | ((token: string) => Promise<string | null>),
   origins: string[],
 ): Promise<Response> {
@@ -98,6 +106,9 @@ export async function handleRecipe(
       .get("Authorization")
       ?.match(/^Bearer\s+(\S+)$/i)?.[1];
     if (!token) throw new RecipeError("unauthorized");
+    const verifyToken = verifyTokenOrCreator as (
+      token: string,
+    ) => Promise<string | null>;
     const authUserId = await verifyToken(token);
     if (!authUserId) throw new RecipeError("unauthorized");
     let body: unknown;
