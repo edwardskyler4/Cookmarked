@@ -1,4 +1,9 @@
 import { useState } from "react";
+import { AuthenticationError } from "../../domain/models/AuthUser";
+import {
+  passwordRequirements,
+  validatePassword,
+} from "../../domain/validation/password";
 
 const fieldStyle = { display: "grid", gap: "0.5rem" } as const;
 
@@ -8,18 +13,22 @@ export default function SettingsPage({
   darkMode,
   onSaveDarkMode,
   onSaveDisplayName,
+  onSavePassword,
 }: {
   username: string;
   displayName: string;
   darkMode: boolean;
   onSaveDarkMode: (darkMode: boolean) => void;
   onSaveDisplayName: (displayName: string) => Promise<void>;
+  onSavePassword: (password: string) => Promise<void>;
 }) {
   const [username] = useState(currentUsername);
   const [displayName, setDisplayName] = useState(currentDisplayName);
   const [displayNameDraft, setDisplayNameDraft] =
     useState(currentDisplayName);
   const [passwordDraft, setPasswordDraft] = useState("");
+  const [savingPassword, setSavingPassword] = useState(false);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
   const [editingDisplayName, setEditingDisplayName] = useState(false);
   const [savingDisplayName, setSavingDisplayName] = useState(false);
   const [displayNameError, setDisplayNameError] = useState<string | null>(
@@ -167,22 +176,47 @@ export default function SettingsPage({
                   style={inputStyle}
                 />
               </label>
+              {passwordError && <p role="alert">{passwordError}</p>}
               <div style={{ display: "flex", gap: "8px" }}>
                 <button
                   className="filter-chip active"
                   type="button"
-                  onClick={() => {
-                    setPasswordDraft("");
-                    setEditingPassword(false);
+                  disabled={savingPassword}
+                  onClick={async () => {
+                    const validationError = validatePassword(passwordDraft);
+                    if (validationError) {
+                      setPasswordError(validationError);
+                      return;
+                    }
+                    setSavingPassword(true);
+                    setPasswordError(null);
+                    try {
+                      await onSavePassword(passwordDraft);
+                      setPasswordDraft("");
+                      setEditingPassword(false);
+                    } catch (error) {
+                      setPasswordError(
+                        error instanceof AuthenticationError &&
+                          error.code === "weak_password"
+                          ? passwordRequirements
+                          : error instanceof Error
+                            ? error.message
+                            : "Unable to update your password.",
+                      );
+                    } finally {
+                      setSavingPassword(false);
+                    }
                   }}
                 >
-                  Save password
+                  {savingPassword ? "Saving…" : "Save password"}
                 </button>
                 <button
                   className="filter-chip"
                   type="button"
+                  disabled={savingPassword}
                   onClick={() => {
                     setPasswordDraft("");
+                    setPasswordError(null);
                     setEditingPassword(false);
                   }}
                 >

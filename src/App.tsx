@@ -65,6 +65,7 @@ function NavigationIcon({ type }: { type: Page }) {
 function SignedInApp({
   user,
   onLogout,
+  onSavePassword,
   pending,
   darkMode,
   onSaveDarkMode,
@@ -76,6 +77,7 @@ function SignedInApp({
   profileService?: ProfileService;
   user: AuthUser;
   onLogout: () => void;
+  onSavePassword: (password: string) => Promise<void>;
   pending: boolean;
   darkMode: boolean;
   onSaveDarkMode: (darkMode: boolean) => void;
@@ -213,6 +215,7 @@ function SignedInApp({
               darkMode={darkMode}
               onSaveDarkMode={onSaveDarkMode}
               onSaveDisplayName={saveDisplayName}
+              onSavePassword={onSavePassword}
             />
           )}
         </div>
@@ -311,6 +314,7 @@ export default function App({
         )}
         <SignedInApp
           profileService={profileService}
+          onSavePassword={authService.updatePassword}
           recipeService={recipeService}
           key={user.id}
           user={user}

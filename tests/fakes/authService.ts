@@ -9,6 +9,7 @@ export function fakeAuthService(user: AuthUser | null = signedInUser) {
     restore: vi.fn().mockResolvedValue(user),
     login: vi.fn().mockResolvedValue(signedInUser),
     register: vi.fn().mockResolvedValue(signedInUser),
+    updatePassword: vi.fn().mockResolvedValue(undefined),
     logout: vi.fn().mockImplementation(async () => notify(null)),
     subscribe: vi.fn().mockImplementation((listener) => {
       notify = listener;
