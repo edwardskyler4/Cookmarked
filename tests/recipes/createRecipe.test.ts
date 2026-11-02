@@ -60,6 +60,29 @@ describe("createRecipe", () => {
       url: "https://example.com/recipe",
     });
   });
+  it("adds HTTPS to a source URL without a scheme before inserting", async () => {
+    const repo = repository();
+
+    await createRecipe(repo, "user", {
+      ...input,
+      url: "example.com/recipe",
+    });
+
+    expect(repo.insert.mock.calls[0][0].url).toBe(
+      "https://example.com/recipe",
+    );
+  });
+  it.each([
+    ["http://example.com/recipe", "http://example.com/recipe"],
+    ["https:/example.com/recipe", "https://example.com/recipe"],
+    ["https:/\/example.com/recipe", "https://example.com/recipe"],
+  ])("corrects the source scheme %s", async (url, expected) => {
+    const repo = repository();
+
+    await createRecipe(repo, "user", { ...input, url });
+
+    expect(repo.insert.mock.calls[0][0].url).toBe(expected);
+  });
   it.each(["title", "prepTime", "ingredients", "instructions"])(
     "rejects empty %s",
     async (field) => {
@@ -87,11 +110,11 @@ describe("createRecipe", () => {
     },
   );
   it.each([
-    "http://example.com",
     "not-a-url",
     "https://",
     "https:///example.com",
-    "ftp://example.com",
+    "https://localhost/recipe",
+    "https://example.",
   ])("rejects source %s", async (url) => {
     await expect(
       createRecipe(repository(), "user", { ...input, url }),

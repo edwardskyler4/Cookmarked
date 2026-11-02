@@ -1,74 +1,4 @@
 import type { RecipeCreator, RecipeInput } from "../domain/Recipe.ts";
-import { createRecipe } from "../services/createRecipe.ts";
-
-export async function handleRecipe(
-  request: Request,
-  authUserId: string,
-  creator: RecipeCreator,
-  origins: string[],
-): Promise<Response> {
-  const origin = request.headers.get("Origin");
-  const headers = new Headers({
-    "Content-Type": "application/json",
-    "Cache-Control": "no-store",
-    Vary: "Origin",
-  });
-
-  if (origin && !origins.includes(origin)) {
-    return new Response(JSON.stringify({ code: "invalid_input" }), {
-      status: 403,
-      headers,
-    });
-  }
-
-  if (origin) headers.set("Access-Control-Allow-Origin", origin);
-  headers.set(
-    "Access-Control-Allow-Headers",
-    "authorization, apikey, content-type, x-client-info",
-  );
-  headers.set("Access-Control-Allow-Methods", "POST, OPTIONS");
-
-  if (request.method === "OPTIONS")
-    return new Response(null, { status: 204, headers });
-
-  if (request.method !== "POST") {
-    return new Response(JSON.stringify({ code: "invalid_input" }), {
-      status: 405,
-      headers,
-    });
-  }
-
-  let body: unknown;
-  try {
-    body = await request.json();
-  } catch {
-    return new Response(JSON.stringify({ code: "invalid_input" }), {
-      status: 400,
-      headers,
-    });
-  }
-
-  if (!body || typeof body !== "object" || Array.isArray(body)) {
-    return new Response(JSON.stringify({ code: "invalid_input" }), {
-      status: 400,
-      headers,
-    });
-  }
-
-  try {
-    const recipe = await createRecipe(
-      creator,
-      authUserId,
-      body as RecipeInput,
-    );
-    return new Response(JSON.stringify(recipe), { status: 201, headers });
-  } catch {
-    return new Response(JSON.stringify({ code: "unavailable" }), {
-      status: 503,
-      headers,
-    });
-  }
-}
 import {
   RecipeError,
   type RecipeRepository,
@@ -77,8 +7,22 @@ import { createRecipe } from "../services/createRecipe.ts";
 
 export async function handleRecipe(
   request: Request,
+  authUserId: string,
+  creator: RecipeCreator,
+  origins: string[],
+): Promise<Response>;
+export async function handleRecipe(
+  request: Request,
   repository: RecipeRepository,
   verifyToken: (token: string) => Promise<string | null>,
+  origins: string[],
+): Promise<Response>;
+export async function handleRecipe(
+  request: Request,
+  repositoryOrAuthUserId: RecipeRepository | string,
+  verifyTokenOrCreator:
+    | ((token: string) => Promise<string | null>)
+    | RecipeCreator,
   origins: string[],
 ): Promise<Response> {
   const origin = request.headers.get("Origin");
@@ -98,11 +42,35 @@ export async function handleRecipe(
   if (request.method === "OPTIONS")
     return new Response(null, { status: 204, headers });
   if (request.method !== "POST") return respond(405, { code: "invalid_input" });
+
+  if (typeof repositoryOrAuthUserId === "string") {
+    let body: unknown;
+    try {
+      body = await request.json();
+    } catch {
+      return respond(400, { code: "invalid_input" });
+    }
+    if (!body || typeof body !== "object" || Array.isArray(body))
+      return respond(400, { code: "invalid_input" });
+    try {
+      const recipe = await verifyTokenOrCreator.create(
+        repositoryOrAuthUserId,
+        body as RecipeInput,
+      );
+      return respond(201, recipe);
+    } catch {
+      return respond(503, { code: "unavailable" });
+    }
+  }
+
   try {
     const token = request.headers
       .get("Authorization")
       ?.match(/^Bearer\s+(\S+)$/i)?.[1];
     if (!token) throw new RecipeError("unauthorized");
+    const verifyToken = verifyTokenOrCreator as (
+      token: string,
+    ) => Promise<string | null>;
     const authUserId = await verifyToken(token);
     if (!authUserId) throw new RecipeError("unauthorized");
     let body: unknown;
@@ -111,7 +79,10 @@ export async function handleRecipe(
     } catch {
       throw new RecipeError("invalid_input");
     }
-    return respond(201, await createRecipe(repository, authUserId, body));
+    return respond(
+      201,
+      await createRecipe(repositoryOrAuthUserId, authUserId, body),
+    );
   } catch (error) {
     const failure =
       error instanceof RecipeError ? error : new RecipeError("unavailable");

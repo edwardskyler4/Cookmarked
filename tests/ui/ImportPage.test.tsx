@@ -306,7 +306,7 @@ describe("ImportPage validation", () => {
     ).not.toBe("true");
   });
 
-  it("explains an invalid nonempty Source URL", () => {
+  it("explains a Source URL without a domain suffix", () => {
     render(<ImportPage recipeService={fakeRecipeService()} />);
     fillRequiredFields();
     fireEvent.change(screen.getByLabelText("Source URL"), {
@@ -316,7 +316,9 @@ describe("ImportPage validation", () => {
 
     expect(screen.getByRole("alert")).toBeDefined();
     expect(
-      screen.getByText("Source URL must start with https:// or be empty."),
+      screen.getByText(
+        "Source URL must include a valid domain (such as example.com) or be empty.",
+      ),
     ).toBeDefined();
   });
 });
@@ -421,11 +423,45 @@ describe("recipe saving", () => {
       (screen.getByLabelText("Meal Type") as HTMLSelectElement).value,
     ).toBe("");
   });
+  it("adds HTTPS before submitting a source URL without a scheme", async () => {
+    const service = fakeRecipeService();
+    render(<ImportPage recipeService={service} />);
+    fillRequiredFields();
+    fireEvent.change(screen.getByLabelText("Source URL"), {
+      target: { value: "example.com/soup" },
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    await screen.findByText("Recipe saved");
+
+    expect(service.create).toHaveBeenCalledWith(
+      expect.objectContaining({ url: "https://example.com/soup" }),
+    );
+  });
   it.each([
-    "http://example.com",
+    ["http://example.com/soup", "http://example.com/soup"],
+    ["https:/example.com/soup", "https://example.com/soup"],
+  ])("corrects source URL scheme %s", async (url, expected) => {
+    const service = fakeRecipeService();
+    render(<ImportPage recipeService={service} />);
+    fillRequiredFields();
+    fireEvent.change(screen.getByLabelText("Source URL"), {
+      target: { value: url },
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    await screen.findByText("Recipe saved");
+
+    expect(service.create).toHaveBeenCalledWith(
+      expect.objectContaining({ url: expected }),
+    );
+  });
+  it.each([
     "not-a-url",
     "https://",
     "https:///example.com",
+    "https://localhost/recipe",
+    "https://example.",
   ])("rejects source URL %s before calling the service", (url) => {
     const service = fakeRecipeService();
     render(<ImportPage recipeService={service} />);
@@ -435,7 +471,9 @@ describe("recipe saving", () => {
     });
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
     expect(
-      screen.getByText("Source URL must start with https:// or be empty."),
+      screen.getByText(
+        "Source URL must include a valid domain (such as example.com) or be empty.",
+      ),
     ).toBeDefined();
     expect(service.create).not.toHaveBeenCalled();
   });
@@ -501,7 +539,7 @@ describe("recipe saving", () => {
         .disabled,
     ).toBe(false);
   });
-  it("shows the HTTPS message when backend URL validation rejects a save", async () => {
+  it("shows the domain message when backend URL validation rejects a save", async () => {
     const service = fakeRecipeService();
     service.create.mockRejectedValue(
       new RecipeSaveError("invalid_input", "url"),
@@ -511,7 +549,7 @@ describe("recipe saving", () => {
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
     expect(
       await screen.findByText(
-        "Source URL must start with https:// or be empty.",
+        "Source URL must include a valid domain (such as example.com) or be empty.",
       ),
     ).toBeDefined();
   });

@@ -2,12 +2,31 @@ import { useEffect, useRef, useState } from "react";
 import type { RecipeService } from "../../services/recipeService";
 import { RecipeSaveError } from "../../domain/repositories/RecipeApiRepository";
 
-const urlMessage = "Source URL must start with https:// or be empty.";
+const urlMessage =
+  "Source URL must include a valid domain (such as example.com) or be empty.";
 const servingsMessage =
   "Serving Size must be an integer between -2147483648 and 2147483647.";
 
 // Grid layout puts each label above its field with a small, consistent gap.
 const fieldStyle = { display: "grid", gap: "0.5rem" } as const;
+
+function normalizeSourceUrl(value: string): string | null {
+  const scheme = value.match(/^https?:\/\//i);
+  const singleSlashScheme = value.match(/^https?:\/(?!\/)/i);
+  const url = scheme
+    ? value
+    : singleSlashScheme
+      ? `https://${value.slice(singleSlashScheme[0].length)}`
+      : `https://${value}`;
+  try {
+    const hostname = new URL(url).hostname;
+    return /^https?:\/\/[^/\s]/i.test(url) && /\.[^.]+$/.test(hostname)
+      ? url
+      : null;
+  } catch {
+    return null;
+  }
+}
 
 export default function ImportPage({
   recipeService,
@@ -43,11 +62,7 @@ export default function ImportPage({
           ?.textContent?.replace(" (Required)", "");
         nextErrors[field.name] = `${label} is required.`;
       } else if (field.name === "source" && field.value.trim()) {
-        const url = field.value.trim();
-        try {
-          if (!/^https:\/\/[^/\s]/.test(url) || !new URL(url).hostname)
-            throw new Error();
-        } catch {
+        if (!normalizeSourceUrl(field.value.trim())) {
           nextErrors.source = urlMessage;
         }
       } else if (field.name === "servingSize") {
@@ -80,6 +95,7 @@ export default function ImportPage({
     if (!validate(form)) return;
     const values = new FormData(form);
     const text = (name: string) => String(values.get(name) ?? "").trim();
+    const sourceUrl = text("source");
     submitting.current = true;
     setPending(true);
     try {
@@ -91,7 +107,7 @@ export default function ImportPage({
         instructions: text("directions"),
         mealType: text("mealType"),
         course: text("course"),
-        url: text("source"),
+        url: sourceUrl ? normalizeSourceUrl(sourceUrl)! : "",
         note: text("notes"),
         nutritionInfo: text("nutrition"),
       });
