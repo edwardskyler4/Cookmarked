@@ -85,6 +85,9 @@ Registration signs the user in immediately. All app pages require a session;
 registration and login are the only public screens. Password recovery is handled
 manually by an administrator. The recipe library currently contains UI placeholders;
 the recipe-add form saves through the `recipes_save` Edge Function with owner-scoped RLS.
+The profile's `first_name` is an editable display name and is separate from the
+permanent username. Users continue to sign in with their original username; direct
+user-facing references use `first_name` when it is set and fall back to the username.
 
 Credential rules run in the Supabase Edge Function business layer. Its data adapter
 calls Supabase Auth. The browser data adapter invokes the function and lets the SDK
@@ -104,7 +107,8 @@ calls Supabase directly. `AuthUser.id` is the Auth UUID; the existing numeric
    migration adds
    `auth_user_id`, creates profiles transactionally at signup, enforces canonical
    usernames, prevents identifier changes, and restricts profile reads to the
-   owner. Browser profile writes are disabled. Legacy anonymous insert access
+   owner. The follow-up profile migration adds the owner-editable `first_name`
+   column; browser writes remain limited to that column. Legacy anonymous insert access
    through `saveUser` is intentionally removed. The migration does not modify
    recipe tables whose schemas are not tracked here. The follow-up migration
    repairs Dev projects where the original migration was already marked applied:

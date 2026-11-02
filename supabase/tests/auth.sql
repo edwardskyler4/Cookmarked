@@ -35,6 +35,16 @@ do $$ begin
  end;
  if (select count(*) from public.profile) <> 1 then raise exception 'RLS must hide other profiles even with an old permissive policy'; end if;
  if (select username from public.profile) <> 'kyler' then raise exception 'Wrong profile visible'; end if;
+ if not exists (
+   select 1 from pg_policies
+   where schemaname = 'public'
+     and tablename = 'profile'
+     and policyname = 'profile_update_own'
+     and cmd = 'UPDATE'
+     and permissive = 'PERMISSIVE'
+ ) then raise exception 'Profile update policy is missing'; end if;
+ update public.profile set first_name = 'Kyler';
+ if (select first_name from public.profile) <> 'Kyler' then raise exception 'Profile display name was not updated'; end if;
  begin
    update public.profile set username = 'changed';
    raise exception 'Client profile update accepted';

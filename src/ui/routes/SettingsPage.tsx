@@ -4,22 +4,31 @@ const fieldStyle = { display: "grid", gap: "0.5rem" } as const;
 
 export default function SettingsPage({
   username: currentUsername,
+  displayName: currentDisplayName,
   darkMode,
   onSaveDarkMode,
+  onSaveDisplayName,
 }: {
   username: string;
+  displayName: string;
   darkMode: boolean;
   onSaveDarkMode: (darkMode: boolean) => void;
+  onSaveDisplayName: (displayName: string) => Promise<void>;
 }) {
-  const [username, setUsername] = useState(currentUsername);
-  const [usernameDraft, setUsernameDraft] = useState(currentUsername);
+  const [username] = useState(currentUsername);
+  const [displayName, setDisplayName] = useState(currentDisplayName);
+  const [displayNameDraft, setDisplayNameDraft] =
+    useState(currentDisplayName);
   const [passwordDraft, setPasswordDraft] = useState("");
-  const [editingUsername, setEditingUsername] = useState(false);
+  const [editingDisplayName, setEditingDisplayName] = useState(false);
+  const [savingDisplayName, setSavingDisplayName] = useState(false);
+  const [displayNameError, setDisplayNameError] = useState<string | null>(
+    null,
+  );
   const [editingPassword, setEditingPassword] = useState(false);
   const [darkModeDraft, setDarkModeDraft] = useState(darkMode);
   const hasUnsavedChanges =
     darkModeDraft !== darkMode ||
-    (editingUsername && usernameDraft.trim() !== username) ||
     (editingPassword && passwordDraft.length > 0);
 
   const panelStyle = {
@@ -54,33 +63,64 @@ export default function SettingsPage({
           <h3 id="username-heading" style={{ margin: 0 }}>
             Username
           </h3>
-          {editingUsername ? (
+          <p style={{ margin: 0 }}>{username || "Username not set"}</p>
+          <p style={{ margin: 0, color: "#666" }}>
+            This is your permanent sign-in username. It is separate from your
+            display name.
+          </p>
+        </section>
+
+        <section aria-labelledby="display-name-heading" style={fieldStyle}>
+          <h3 id="display-name-heading" style={{ margin: 0 }}>
+            Display name
+          </h3>
+          {editingDisplayName ? (
             <>
               <label style={fieldStyle}>
-                <span className="sr-only">Edit username</span>
+                <span className="sr-only">Display name</span>
                 <input
-                  autoComplete="username"
-                  value={usernameDraft}
-                  onChange={(event) => setUsernameDraft(event.target.value)}
-                  placeholder="Enter a username"
+                  value={displayNameDraft}
+                  onChange={(event) => setDisplayNameDraft(event.target.value)}
+                  placeholder="Enter a display name"
+                  maxLength={45}
                   style={inputStyle}
                 />
               </label>
+              {displayNameError && <p role="alert">{displayNameError}</p>}
               <div style={{ display: "flex", gap: "8px" }}>
                 <button
                   className="filter-chip active"
                   type="button"
-                  onClick={() => {
-                    setUsername(usernameDraft.trim());
-                    setEditingUsername(false);
+                  disabled={savingDisplayName}
+                  onClick={async () => {
+                    setSavingDisplayName(true);
+                    setDisplayNameError(null);
+                    try {
+                      await onSaveDisplayName(displayNameDraft);
+                      setDisplayName(displayNameDraft.trim());
+                      setEditingDisplayName(false);
+                    } catch (error) {
+                      setDisplayNameError(
+                        error instanceof Error
+                          ? error.message
+                          : "Unable to save your display name.",
+                      );
+                    } finally {
+                      setSavingDisplayName(false);
+                    }
                   }}
                 >
-                  Save username
+                  {savingDisplayName ? "Saving…" : "Save display name"}
                 </button>
                 <button
                   className="filter-chip"
                   type="button"
-                  onClick={() => setEditingUsername(false)}
+                  disabled={savingDisplayName}
+                  onClick={() => {
+                    setDisplayNameDraft(displayName);
+                    setDisplayNameError(null);
+                    setEditingDisplayName(false);
+                  }}
                 >
                   Cancel
                 </button>
@@ -95,16 +135,16 @@ export default function SettingsPage({
                 gap: "12px",
               }}
             >
-              <p style={{ margin: 0 }}>{username || "Username not set"}</p>
+              <p style={{ margin: 0 }}>{displayName || "Not set"}</p>
               <button
                 className="filter-chip"
                 type="button"
                 onClick={() => {
-                  setUsernameDraft(username);
-                  setEditingUsername(true);
+                  setDisplayNameDraft(displayName);
+                  setEditingDisplayName(true);
                 }}
               >
-                Edit username
+                What should we call you?
               </button>
             </div>
           )}
