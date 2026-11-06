@@ -17,6 +17,7 @@ export type Course =
 export interface RecipeInput {
   title: string;
   description?: string;
+  note?: string;
   ingredients?: string;
   instructions?: string;
   prepTime?: string;
@@ -28,6 +29,7 @@ export interface RecipeInput {
   url?: string;
   mediaType?: string;
   thumbnailUrl?: string;
+  nutritionInfo?: string;
 }
 
 export interface Recipe extends RecipeInput {
@@ -39,4 +41,8 @@ export interface Recipe extends RecipeInput {
 
 export interface RecipeCreator {
   create(authUserId: string, input: RecipeInput): Promise<Recipe>;
+}
+
+export interface RecipeReader {
+  list(authUserId: string): Promise<Recipe[]>;
 }

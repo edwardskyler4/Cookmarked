@@ -7,9 +7,11 @@ import "./App.css";
 import type { RecipeService } from "./services/recipeService";
 import type { AuthService } from "./services/authService";
 import type { AuthUser } from "./domain/models/AuthUser";
+import type { Recipe } from "./domain/models/Recipe";
+import type { RecipeReader } from "./domain/repositories/RecipeReader";
+import { listRecipes } from "./services/listRecipes";
 
 const filters = ["All recipes", "Breakfast", "Dinner", "Dessert"];
-const recipes = ["Recipe Name", "Recipe Name", "Recipe Name", "Recipe Name"];
 const pageLabels = {
   home: "Home / Library",
   planner: "Planner",
@@ -66,6 +68,7 @@ function SignedInApp({
   darkMode,
   onSaveDarkMode,
   recipeService,
+  recipeReader,
 }: {
   recipeService: RecipeService;
   user: AuthUser;
@@ -73,8 +76,31 @@ function SignedInApp({
   pending: boolean;
   darkMode: boolean;
   onSaveDarkMode: (darkMode: boolean) => void;
+  recipeReader: RecipeReader;
 }) {
   const [page, setPage] = useState<Page>("home");
+  const [recipes, setRecipes] = useState<Recipe[]>([]);
+  const [recipesLoading, setRecipesLoading] = useState(true);
+  const [recipesError, setRecipesError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    setRecipesLoading(true);
+    setRecipesError(null);
+    listRecipes(recipeReader)
+      .then((nextRecipes) => {
+        if (active) setRecipes(nextRecipes);
+      })
+      .catch(() => {
+        if (active) setRecipesError("Unable to load your recipes.");
+      })
+      .finally(() => {
+        if (active) setRecipesLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [recipeReader]);
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -123,8 +149,13 @@ function SignedInApp({
                 ))}
               </div>
               <div className="recipe-list" aria-label="Recipe list">
+                {recipesLoading && <p role="status">Loading your recipes...</p>}
+                {recipesError && <p role="alert">{recipesError}</p>}
+                {!recipesLoading && !recipesError && recipes.length === 0 && (
+                  <p>No recipes saved yet.</p>
+                )}
                 {recipes.map((recipe, index) => (
-                  <article className="recipe-card" key={`${recipe}-${index}`}>
+                  <article className="recipe-card" key={recipe.recipeId}>
                     <div
                       className="recipe-image-placeholder"
                       aria-hidden="true"
@@ -135,12 +166,14 @@ function SignedInApp({
                       <p className="recipe-kicker">
                         {index === 0 ? "Featured recipe" : "Saved recipe"}
                       </p>
-                      <h2>{recipe}</h2>
-                      <p className="recipe-meta">Prep time · 30 min</p>
+                      <h2>{recipe.title}</h2>
+                      <p className="recipe-meta">
+                        Prep time · {recipe.prepTime ?? "Not set"}
+                      </p>
                     </div>
                     <button
                       className="more-button"
-                      aria-label={`More options for ${recipe}`}
+                      aria-label={`More options for ${recipe.title}`}
                     >
                       ···
                     </button>
@@ -177,12 +210,16 @@ function SignedInApp({
   );
 }
 
+const emptyRecipeReader: RecipeReader = { list: async () => [] };
+
 export default function App({
   authService,
   recipeService,
+  recipeReader = emptyRecipeReader,
 }: {
   authService: AuthService;
   recipeService: RecipeService;
+  recipeReader?: RecipeReader;
 }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
@@ -254,6 +291,7 @@ export default function App({
           pending={loggingOut}
           darkMode={darkMode}
           onSaveDarkMode={setDarkMode}
+          recipeReader={recipeReader}
         />
       </>
     );
@@ -281,7 +319,10 @@ export default function App({
               </button>
             </section>
           ) : (
-            <LoginPage authService={authService} onSignedIn={setUser} />
+            <LoginPage
+              authService={authService}
+              onSignedIn={setUser}
+            />
           )}
         </div>
       </section>

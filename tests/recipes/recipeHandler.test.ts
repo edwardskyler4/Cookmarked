@@ -156,17 +156,16 @@ describe("recipe handler", () => {
       ).status,
     ).toBe(400);
   });
-  it("returns a validation field for invalid HTTPS URLs", async () => {
+  it("accepts HTTP URLs without changing their scheme", async () => {
+    const repo = repository();
     const response = await handleRecipe(
       request(JSON.stringify({ ...recipeInput, url: "http://example.com" })),
-      repository(),
+      repo,
       async () => "user",
       [origin],
     );
-    expect(await response.json()).toEqual({
-      code: "invalid_input",
-      field: "url",
-    });
+    expect(response.status).toBe(201);
+    expect(repo.insert.mock.calls[0][0].url).toBe("http://example.com");
   });
   it("returns 403 when the account has no profile", async () => {
     const repo = repository();
@@ -184,5 +183,32 @@ describe("recipe handler", () => {
     ]);
     expect(response.status).toBe(503);
     expect(await response.json()).toEqual({ code: "unavailable" });
+  });
+
+  it("logs recipe-list failures while hiding database details", async () => {
+    const failure = new Error("profile lookup failed");
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const repo = {
+      create: vi.fn(),
+      list: vi.fn().mockRejectedValue(failure),
+    };
+
+    const response = await handleRecipe(
+      new Request("https://api.example/recipes", {
+        method: "GET",
+        headers: { Origin: origin },
+      }),
+      "user",
+      repo,
+      [origin],
+    );
+
+    expect(response.status).toBe(503);
+    expect(await response.json()).toEqual({ code: "unavailable" });
+    expect(errorSpy).toHaveBeenCalledWith(
+      "Unable to list recipes",
+      failure,
+    );
+    errorSpy.mockRestore();
   });
 });
