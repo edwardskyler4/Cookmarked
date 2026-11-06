@@ -1,5 +1,10 @@
 project_id = "cookmarked"
 
+# Keep local Auth password validation aligned with the hosted project.
+[auth]
+minimum_password_length = 8
+password_requirements = "lower_upper_letters_digits_symbols"
+
 # This endpoint authenticates credentials itself; callers do not have a session yet.
 [functions.auth]
 verify_jwt = false

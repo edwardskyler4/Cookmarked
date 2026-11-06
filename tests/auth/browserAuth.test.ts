@@ -12,6 +12,7 @@ function setup() {
       .fn()
       .mockResolvedValue({ data: { session: { user } }, error: null }),
     getUser: vi.fn().mockResolvedValue({ data: { user }, error: null }),
+    updateUser: vi.fn().mockResolvedValue({ data: { user }, error: null }),
     signOut: vi.fn().mockResolvedValue({ error: null }),
     onAuthStateChange: vi.fn(),
   };
@@ -47,6 +48,36 @@ describe("browser authentication", () => {
     const { repo, auth } = setup();
     expect(await repo.restore()).toEqual({ id: "uuid", username: "kyler" });
     expect(auth.getUser).toHaveBeenCalled();
+  });
+  it("updates the authenticated user's password", async () => {
+    const { repo, auth } = setup();
+    const service = createAuthService(repo);
+
+    await service.updatePassword("NewPassword123!");
+
+    expect(auth.updateUser).toHaveBeenCalledWith({
+      password: "NewPassword123!",
+    });
+  });
+  it("rejects a weak password before calling Supabase Auth", async () => {
+    const { repo, auth } = setup();
+    const service = createAuthService(repo);
+
+    await expect(service.updatePassword("weak"))
+      .rejects.toMatchObject({ code: "weak_password" });
+
+    expect(auth.updateUser).not.toHaveBeenCalled();
+  });
+  it("maps Supabase weak-password errors", async () => {
+    const { repo, auth } = setup();
+    auth.updateUser.mockResolvedValue({
+      data: { user: null },
+      error: { code: "weak_password" },
+    });
+    const service = createAuthService(repo);
+
+    await expect(service.updatePassword("StrongPassword1!"))
+      .rejects.toMatchObject({ code: "weak_password" });
   });
   it("returns no user without a session", async () => {
     const { repo, auth } = setup();

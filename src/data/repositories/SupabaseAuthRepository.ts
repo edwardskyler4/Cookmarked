@@ -23,6 +23,13 @@ export class SupabaseAuthRepository implements AuthRepository {
     return this.authenticate("login", username, password);
   }
 
+  async updatePassword(password: string): Promise<void> {
+    const { error } = await this.client.auth.updateUser({ password });
+    if (error?.code === "weak_password")
+      throw new AuthenticationError("weak_password");
+    if (error) throw new AuthenticationError("unavailable");
+  }
+
   private async authenticate(
     action: "register" | "login",
     username: string,

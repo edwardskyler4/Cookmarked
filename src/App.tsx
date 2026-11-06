@@ -10,6 +10,7 @@ import type { AuthUser } from "./domain/models/AuthUser";
 import type { Recipe } from "./domain/models/Recipe";
 import type { RecipeReader } from "./domain/repositories/RecipeReader";
 import { listRecipes } from "./services/listRecipes";
+import type { ProfileService } from "./services/profileService";
 
 const filters = ["All recipes", "Breakfast", "Dinner", "Dessert"];
 const pageLabels = {
@@ -64,15 +65,19 @@ function NavigationIcon({ type }: { type: Page }) {
 function SignedInApp({
   user,
   onLogout,
+  onSavePassword,
   pending,
   darkMode,
   onSaveDarkMode,
+  profileService,
   recipeService,
   recipeReader,
 }: {
   recipeService: RecipeService;
+  profileService?: ProfileService;
   user: AuthUser;
   onLogout: () => void;
+  onSavePassword: (password: string) => Promise<void>;
   pending: boolean;
   darkMode: boolean;
   onSaveDarkMode: (darkMode: boolean) => void;
@@ -101,6 +106,29 @@ function SignedInApp({
       active = false;
     };
   }, [recipeReader]);
+  const [displayName, setDisplayName] = useState("");
+
+  useEffect(() => {
+    let active = true;
+    if (!profileService) return;
+    profileService
+      .getCurrent()
+      .then((profile) => {
+        if (active) setDisplayName(profile.firstName);
+      })
+      .catch(() => {
+        // The username remains available if the optional profile lookup fails.
+      });
+    return () => {
+      active = false;
+    };
+  }, [profileService, user.id]);
+
+  async function saveDisplayName(nextDisplayName: string) {
+    if (!profileService) return;
+    const profile = await profileService.updateDisplayName(nextDisplayName);
+    setDisplayName(profile.firstName);
+  }
 
   return (
     <main className={darkMode ? "page-shell dark-theme" : "page-shell"}>
@@ -112,7 +140,7 @@ function SignedInApp({
           </div>
           <div className="header-actions">
             <p className="location-label">{pageLabels[page]}</p>
-            <span>{user.username}</span>
+            <span>{displayName || user.username}</span>
             <button
               className="filter-chip"
               onClick={onLogout}
@@ -183,8 +211,11 @@ function SignedInApp({
           {page === "settings" && (
             <SettingsPage
               username={user.username}
+              displayName={displayName}
               darkMode={darkMode}
               onSaveDarkMode={onSaveDarkMode}
+              onSaveDisplayName={saveDisplayName}
+              onSavePassword={onSavePassword}
             />
           )}
         </div>
@@ -210,10 +241,12 @@ const emptyRecipeReader: RecipeReader = { list: async () => [] };
 
 export default function App({
   authService,
+  profileService,
   recipeService,
   recipeReader = emptyRecipeReader,
 }: {
   authService: AuthService;
+  profileService?: ProfileService;
   recipeService: RecipeService;
   recipeReader?: RecipeReader;
 }) {
@@ -280,6 +313,8 @@ export default function App({
           </p>
         )}
         <SignedInApp
+          profileService={profileService}
+          onSavePassword={authService.updatePassword}
           recipeService={recipeService}
           key={user.id}
           user={user}
