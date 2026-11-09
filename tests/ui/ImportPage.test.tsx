@@ -14,10 +14,35 @@ const appStyles = readFileSync("src/App.css", "utf8");
 import { fakeRecipeService } from "../fakes/recipeService";
 import { RecipeSaveError } from "../../src/domain/repositories/RecipeApiRepository";
 import ImportPage from "../../src/ui/routes/ImportPage";
+import type { TempRecipe } from "../../src/domain/models/TempRecipe";
 
 afterEach(cleanup);
 
 describe("ImportPage fields", () => {
+  it("shows imported text as reference material without submitting it as a recipe field", () => {
+    const imported: TempRecipe = {
+      recipeId: 3,
+      title: "Tomato soup",
+      text: "Random caption and reel transcript",
+      url: "https://example.com/soup",
+      sharedFromPlatform: "Instagram",
+    };
+
+    render(
+      <ImportPage recipeService={fakeRecipeService()} tempRecipe={imported} />,
+    );
+
+    expect(screen.getByText("Random caption and reel transcript")).toBeDefined();
+    expect(
+      (screen.getByLabelText("Recipe Title (Required)") as HTMLInputElement)
+        .value,
+    ).toBe("Tomato soup");
+    expect((screen.getByLabelText("Source URL") as HTMLInputElement).value).toBe(
+      "https://example.com/soup",
+    );
+    expect(screen.queryByLabelText("Imported text")).toBeNull();
+  });
+
   it("keeps each label associated with only its own text box", () => {
     render(<ImportPage recipeService={fakeRecipeService()} />);
 

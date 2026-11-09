@@ -11,6 +11,9 @@ import type { Recipe } from "./domain/models/Recipe";
 import type { RecipeReader } from "./domain/repositories/RecipeReader";
 import { listRecipes } from "./services/listRecipes";
 import type { ProfileService } from "./services/profileService";
+import type { TempRecipe } from "./domain/models/TempRecipe";
+import type { TempRecipeRepository } from "./domain/repositories/TempRecipeRepository";
+import { convertTempRecipe } from "./services/convertTempRecipe";
 
 const filters = ["All recipes", "Breakfast", "Dinner", "Dessert"];
 const pageLabels = {
@@ -72,6 +75,7 @@ function SignedInApp({
   profileService,
   recipeService,
   recipeReader,
+  tempRecipeRepository,
 }: {
   recipeService: RecipeService;
   profileService?: ProfileService;
@@ -82,11 +86,14 @@ function SignedInApp({
   darkMode: boolean;
   onSaveDarkMode: (darkMode: boolean) => void;
   recipeReader: RecipeReader;
+  tempRecipeRepository?: TempRecipeRepository;
 }) {
   const [page, setPage] = useState<Page>("home");
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [recipesLoading, setRecipesLoading] = useState(true);
   const [recipesError, setRecipesError] = useState<string | null>(null);
+  const [tempRecipes, setTempRecipes] = useState<TempRecipe[]>([]);
+  const [selectedTempRecipeId, setSelectedTempRecipeId] = useState<number | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -106,6 +113,22 @@ function SignedInApp({
       active = false;
     };
   }, [recipeReader]);
+
+  useEffect(() => {
+    let active = true;
+    if (!tempRecipeRepository) return;
+    tempRecipeRepository
+      .list()
+      .then((nextTempRecipes) => {
+        if (active) setTempRecipes(nextTempRecipes);
+      })
+      .catch(() => {
+        if (active) setTempRecipes([]);
+      });
+    return () => {
+      active = false;
+    };
+  }, [tempRecipeRepository]);
   const [displayName, setDisplayName] = useState("");
 
   useEffect(() => {
@@ -207,7 +230,62 @@ function SignedInApp({
             </>
           )}
           {page === "planner" && <PlannerPage />}
-          {page === "import" && <ImportPage recipeService={recipeService} />}
+          {page === "import" && (
+            <>
+              {tempRecipeRepository && (
+                <section className="page-panel import-inbox" aria-labelledby="import-inbox-heading">
+                  <p className="eyebrow">Import inbox</p>
+                  <h2 id="import-inbox-heading">Imported recipes</h2>
+                  {tempRecipes.length === 0 ? (
+                    <p>No imported recipes waiting for review.</p>
+                  ) : (
+                    <div>
+                      {tempRecipes.map((tempRecipe) => (
+                        <button
+                          type="button"
+                          className={
+                            selectedTempRecipeId === tempRecipe.recipeId
+                              ? "filter-chip active"
+                              : "filter-chip"
+                          }
+                          key={tempRecipe.recipeId}
+                          onClick={() => setSelectedTempRecipeId(tempRecipe.recipeId)}
+                        >
+                          {tempRecipe.title}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </section>
+              )}
+              <ImportPage
+                recipeService={recipeService}
+                tempRecipe={tempRecipes.find(
+                  (tempRecipe) => tempRecipe.recipeId === selectedTempRecipeId,
+                )}
+                saveRecipe={
+                  selectedTempRecipeId !== null && tempRecipeRepository
+                    ? (draft) =>
+                        convertTempRecipe(
+                          recipeService,
+                          tempRecipeRepository,
+                          selectedTempRecipeId,
+                          draft,
+                        ).then((result) => {
+                          setTempRecipes((current) =>
+                            current.filter(
+                              (tempRecipe) =>
+                                tempRecipe.recipeId !== selectedTempRecipeId,
+                            ),
+                          );
+                          setSelectedTempRecipeId(null);
+                          return result;
+                        })
+                    : undefined
+                }
+              />
+            </>
+          )}
           {page === "settings" && (
             <SettingsPage
               username={user.username}
@@ -244,11 +322,13 @@ export default function App({
   profileService,
   recipeService,
   recipeReader = emptyRecipeReader,
+  tempRecipeRepository,
 }: {
   authService: AuthService;
   profileService?: ProfileService;
   recipeService: RecipeService;
   recipeReader?: RecipeReader;
+  tempRecipeRepository?: TempRecipeRepository;
 }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
@@ -323,6 +403,7 @@ export default function App({
           darkMode={darkMode}
           onSaveDarkMode={setDarkMode}
           recipeReader={recipeReader}
+          tempRecipeRepository={tempRecipeRepository}
         />
       </>
     );
