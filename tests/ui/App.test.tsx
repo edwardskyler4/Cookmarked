@@ -51,7 +51,7 @@ describe("Cookmarked home", () => {
         .getByRole("button", { name: "Home" })
         .getAttribute("aria-current"),
     ).toBe("page");
-    for (const name of ["Planner", "Import", "Settings"]) {
+    for (const name of ["Planner", "Add", "Settings"]) {
       expect(
         navigation.getByRole("button", { name }).getAttribute("aria-current"),
       ).toBeNull();

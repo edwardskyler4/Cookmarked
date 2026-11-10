@@ -10,7 +10,7 @@ import { fakeAuthService } from "../fakes/authService";
 afterEach(cleanup);
 
 describe("Cookmarked page shells", () => {
-  it.each(["Planner", "Import", "Settings"])(
+  it.each(["Planner", "Add", "Settings"])(
     "returns to the home library from %s",
     async (page) => {
       render(
@@ -105,7 +105,7 @@ describe("Cookmarked page shells", () => {
     ).toBeDefined();
   });
 
-  it("opens import from the main navigation", async () => {
+  it("opens Add from the main navigation", async () => {
     render(
       <App
         recipeService={fakeRecipeService()}
@@ -114,19 +114,20 @@ describe("Cookmarked page shells", () => {
     );
     await screen.findByRole("searchbox");
 
-    fireEvent.click(screen.getByRole("button", { name: "Import" }));
+    fireEvent.click(screen.getByRole("button", { name: "Add" }));
 
-    expect(screen.queryByRole("heading", { name: "Import" })).not.toBeNull();
+    expect(screen.queryByRole("heading", { name: "Add" })).not.toBeNull();
+    expect(
+      screen.getByRole("region", { name: "Cookmarked add" }),
+    ).toBeDefined();
     expect(
       screen.queryByRole("searchbox", { name: "Search recipes" }),
     ).toBeNull();
     expect(
-      screen
-        .getByRole("button", { name: "Import" })
-        .getAttribute("aria-current"),
+      screen.getByRole("button", { name: "Add" }).getAttribute("aria-current"),
     ).toBe("page");
     expect(
-      screen.getByText("Import", { selector: ".location-label" }),
+      screen.getByText("Add", { selector: ".location-label" }),
     ).toBeDefined();
   });
 
