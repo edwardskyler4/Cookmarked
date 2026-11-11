@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import PlannerPage from "./ui/routes/PlannerPage";
 import ImportPage from "./ui/routes/ImportPage";
 import SettingsPage from "./ui/routes/SettingsPage";
@@ -95,24 +95,21 @@ function SignedInApp({
   const [tempRecipes, setTempRecipes] = useState<TempRecipe[]>([]);
   const [selectedTempRecipeId, setSelectedTempRecipeId] = useState<number | null>(null);
 
-  useEffect(() => {
-    let active = true;
+  const reloadRecipes = useCallback(async () => {
     setRecipesLoading(true);
     setRecipesError(null);
-    listRecipes(recipeReader)
-      .then((nextRecipes) => {
-        if (active) setRecipes(nextRecipes);
-      })
-      .catch(() => {
-        if (active) setRecipesError("Unable to load your recipes.");
-      })
-      .finally(() => {
-        if (active) setRecipesLoading(false);
-      });
-    return () => {
-      active = false;
-    };
+    try {
+      setRecipes(await listRecipes(recipeReader));
+    } catch {
+      setRecipesError("Unable to load your recipes.");
+    } finally {
+      setRecipesLoading(false);
+    }
   }, [recipeReader]);
+
+  useEffect(() => {
+    void reloadRecipes();
+  }, [reloadRecipes]);
 
   useEffect(() => {
     let active = true;
@@ -283,6 +280,7 @@ function SignedInApp({
                         })
                     : undefined
                 }
+                onSaved={reloadRecipes}
               />
             </>
           )}

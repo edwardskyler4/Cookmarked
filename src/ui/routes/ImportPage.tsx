@@ -33,10 +33,12 @@ export default function ImportPage({
   recipeService,
   tempRecipe,
   saveRecipe,
+  onSaved,
 }: {
   recipeService: RecipeService;
   tempRecipe?: TempRecipe;
   saveRecipe?: RecipeService["create"];
+  onSaved?: () => void | Promise<void>;
 }) {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [checked, setChecked] = useState(false);
@@ -119,6 +121,7 @@ export default function ImportPage({
       await (saveRecipe ?? recipeService.create)(draft);
       form.reset();
       setSaved(true);
+      void onSaved?.();
     } catch (failure) {
       if (
         failure instanceof RecipeSaveError &&
