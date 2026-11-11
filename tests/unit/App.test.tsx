@@ -21,7 +21,7 @@ describe("Cookmarked homepage", () => {
       "Search recipes",
       "Recipe Name",
       "Planner",
-      "Import",
+      "Add",
       "Settings",
     ]) {
       expect(markup).not.toContain(privateContent);

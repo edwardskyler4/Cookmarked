@@ -186,7 +186,7 @@ backend/tooling. Do not send recovery emails or change the internal identifier.
 
 ## Recipe creation
 
-The Import page saves manually entered recipes through the `recipes_save` Edge Function.
+The Add page saves manually entered recipes through the `recipes_save` Edge Function.
 The browser receives its service from `src/main.tsx`; validation and ownership rules
 live in `supabase/functions/_shared/services/createRecipe.ts`. The request handler
 verifies the bearer token using Supabase Auth. A fresh database client forwards the

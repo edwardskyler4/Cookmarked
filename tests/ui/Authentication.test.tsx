@@ -99,7 +99,7 @@ describe("authentication UI", () => {
         .hasAttribute("disabled"),
     ).toBe(true);
   });
-  it.each(["Home", "Planner", "Import", "Settings"])(
+  it.each(["Home", "Planner", "Add", "Settings"])(
     "returns from %s to login when the session ends",
     async (page) => {
       const { service, emit } = fakeAuthService();

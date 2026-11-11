@@ -168,14 +168,11 @@ export default function ImportPage({
   }
 
   return (
-    <section
-      className="page-panel recipe-editor"
-      aria-labelledby="import-heading"
-    >
+    <section className="page-panel recipe-editor" aria-labelledby="add-heading">
       <p className="eyebrow">Editor Form</p>
       {/* Keep the page name available to screen readers while showing the form title. */}
-      <h2 id="import-heading" className="sr-only">
-        Import
+      <h2 id="add-heading" className="sr-only">
+        Add
       </h2>
       <h3 id="recipe-heading">New Recipe</h3>
       <form

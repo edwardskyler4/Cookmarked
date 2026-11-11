@@ -3,9 +3,9 @@ import type {
   RecipeInput as LegacyRecipeInput,
   RecipeReader,
 } from "../domain/Recipe.ts";
-import { 
-  RecipeError, 
-  type RecipeRepository 
+import {
+  RecipeError,
+  type RecipeRepository,
 } from "../domain/RecipeRepository.ts";
 import { createRecipe } from "../services/createRecipe.ts";
 import { listRecipes } from "../services/listRecipes.ts";
@@ -26,7 +26,11 @@ function responseHeaders(origin: string | null, origins: string[]): Headers {
   return headers;
 }
 
-function jsonResponse(status: number, body: unknown, headers: Headers): Response {
+function jsonResponse(
+  status: number,
+  body: unknown,
+  headers: Headers,
+): Response {
   return new Response(JSON.stringify(body), { status, headers });
 }
 
@@ -34,7 +38,6 @@ export function handleRecipe(
   request: Request,
   authUserId: string,
   repository: LegacyRepository,
-  creator: RecipeCreator,
   origins: string[],
 ): Promise<Response>;
 
@@ -48,11 +51,8 @@ export function handleRecipe(
 export async function handleRecipe(
   request: Request,
   authOrRepository: string | RecipeRepository,
-  repositoryOrAuthUserId: RecipeRepository | string,
-  verifyTokenOrCreator:
-    | ((token: string) => Promise<string | null>)
-    | RecipeCreator,
-  repositoryOrVerifier: LegacyRepository | ((token: string) => Promise<string | null>),
+  repositoryOrVerifier:
+    LegacyRepository | ((token: string) => Promise<string | null>),
   origins: string[],
 ): Promise<Response> {
   const origin = request.headers.get("Origin");
@@ -70,7 +70,11 @@ export async function handleRecipe(
       if (!repository.list)
         return jsonResponse(503, { code: "unavailable" }, headers);
       try {
-        return jsonResponse(200, await listRecipes(repository, authUserId), headers);
+        return jsonResponse(
+          200,
+          await listRecipes(repository, authUserId),
+          headers,
+        );
       } catch (error) {
         console.error("Unable to list recipes", error);
         return jsonResponse(503, { code: "unavailable" }, headers);
@@ -98,7 +102,9 @@ export async function handleRecipe(
   }
 
   const repository = authOrRepository as RecipeRepository;
-  const verifyToken = repositoryOrVerifier as (token: string) => Promise<string | null>;
+  const verifyToken = repositoryOrVerifier as (
+    token: string,
+  ) => Promise<string | null>;
   if (request.method !== "POST")
     return jsonResponse(405, { code: "invalid_input" }, headers);
   try {
@@ -106,9 +112,6 @@ export async function handleRecipe(
       .get("Authorization")
       ?.match(/^Bearer\s+(\S+)$/i)?.[1];
     if (!token) throw new RecipeError("unauthorized");
-    const verifyToken = verifyTokenOrCreator as (
-      token: string,
-    ) => Promise<string | null>;
     const authUserId = await verifyToken(token);
     if (!authUserId) throw new RecipeError("unauthorized");
     let body: unknown;
@@ -117,7 +120,11 @@ export async function handleRecipe(
     } catch {
       throw new RecipeError("invalid_input");
     }
-    return jsonResponse(201, await createRecipe(repository, authUserId, body), headers);
+    return jsonResponse(
+      201,
+      await createRecipe(repository, authUserId, body),
+      headers,
+    );
   } catch (error) {
     const failure =
       error instanceof RecipeError ? error : new RecipeError("unavailable");
@@ -131,7 +138,10 @@ export async function handleRecipe(
             : 503;
     return jsonResponse(
       status,
-      { code: failure.code, ...(failure.field ? { field: failure.field } : {}) },
+      {
+        code: failure.code,
+        ...(failure.field ? { field: failure.field } : {}),
+      },
       headers,
     );
   }

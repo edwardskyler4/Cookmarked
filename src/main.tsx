@@ -22,13 +22,9 @@ createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <App
       authService={authService}
-      recipeService={recipeService}
-      recipeReader={new SupabaseRecipeRepository(supabase)}
-    />
-    <App
-      authService={authService}
       profileService={profileService}
       recipeService={recipeService}
+      recipeReader={new SupabaseRecipeRepository(supabase)}
     />
   </StrictMode>,
 );
