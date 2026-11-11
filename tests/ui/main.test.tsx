@@ -12,11 +12,23 @@ vi.mock("react-dom/client", () => ({
 // Startup constructs adapters, but this test never contacts Supabase.
 vi.mock("../../src/data/supabaseClient", () => ({ supabase: {} }));
 
-afterEach(() => document.body.replaceChildren());
+afterEach(() => {
+  document.body.replaceChildren();
+  window.history.replaceState(null, "", "/");
+});
 
 describe("application startup", () => {
   it("mounts one fully wired application", async () => {
     document.body.innerHTML = '<div id="root"></div>';
+    const sharedLink = {
+      url: "https://www.instagram.com/p/example/?a=1&b=2",
+      text: "A recipe to try",
+    };
+    window.history.replaceState(
+      null,
+      "",
+      `/share-target?${new URLSearchParams(sharedLink)}`,
+    );
 
     await import("../../src/main");
 
@@ -40,5 +52,6 @@ describe("application startup", () => {
         }),
       },
     });
+    expect(applications[0]).not.toHaveProperty("props.sharedLink");
   });
 });
