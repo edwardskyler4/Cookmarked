@@ -76,6 +76,7 @@ function SignedInApp({
   recipeService,
   recipeReader,
   tempRecipeRepository,
+  onImportUrl,
 }: {
   recipeService: RecipeService;
   profileService?: ProfileService;
@@ -87,6 +88,7 @@ function SignedInApp({
   onSaveDarkMode: (darkMode: boolean) => void;
   recipeReader: RecipeReader;
   tempRecipeRepository?: TempRecipeRepository;
+  onImportUrl: (url: string) => void | Promise<void>;
 }) {
   const [page, setPage] = useState<Page>("home");
   const [recipes, setRecipes] = useState<Recipe[]>([]);
@@ -232,7 +234,7 @@ function SignedInApp({
               {tempRecipeRepository && (
                 <section className="page-panel import-inbox" aria-labelledby="import-inbox-heading">
                   <p className="eyebrow">Import inbox</p>
-                  <h2 id="import-inbox-heading">Imported recipes</h2>
+                  <h2 id="import-inbox-heading">Imported recipes:</h2>
                   {tempRecipes.length === 0 ? (
                     <p>No imported recipes waiting for review.</p>
                   ) : (
@@ -253,6 +255,36 @@ function SignedInApp({
                       ))}
                     </div>
                   )}
+                  <form
+                    className="import-url-form"
+                    onSubmit={(event) => {
+                      event.preventDefault();
+                      const form = event.currentTarget;
+                      const url = new FormData(form).get("recipeUrl");
+                      if (typeof url === "string") {
+                        const trimmedUrl = url.trim();
+                        console.log(
+                          "[Cookmarked] Received recipe URL:",
+                          trimmedUrl,
+                          "Planned action: create a temporary recipe for review.",
+                        );
+                        void onImportUrl(trimmedUrl);
+                      }
+                    }}
+                  >
+                    <label className="editor-field">
+                      <span>Recipe URL</span>
+                      <input
+                        type="url"
+                        name="recipeUrl"
+                        placeholder="https://example.com/recipe"
+                        required
+                      />
+                    </label>
+                    <button className="filter-chip active" type="submit">
+                      Import URL
+                    </button>
+                  </form>
                 </section>
               )}
               <ImportPage
@@ -321,12 +353,14 @@ export default function App({
   recipeService,
   recipeReader = emptyRecipeReader,
   tempRecipeRepository,
+  onImportUrl = () => {},
 }: {
   authService: AuthService;
   profileService?: ProfileService;
   recipeService: RecipeService;
   recipeReader?: RecipeReader;
   tempRecipeRepository?: TempRecipeRepository;
+  onImportUrl?: (url: string) => void | Promise<void>;
 }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
@@ -402,6 +436,7 @@ export default function App({
           onSaveDarkMode={setDarkMode}
           recipeReader={recipeReader}
           tempRecipeRepository={tempRecipeRepository}
+          onImportUrl={onImportUrl}
         />
       </>
     );

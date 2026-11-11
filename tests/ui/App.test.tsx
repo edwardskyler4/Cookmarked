@@ -2,15 +2,50 @@
 import { fakeRecipeService } from "../fakes/recipeService";
 
 import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import App from "../../src/App";
 import type { RecipeReader } from "../../src/domain/repositories/RecipeReader";
+import type { TempRecipeRepository } from "../../src/domain/repositories/TempRecipeRepository";
 
 import { fakeAuthService } from "../fakes/authService";
 
 afterEach(cleanup);
 
 describe("Cookmarked home", () => {
+  it("accepts a recipe URL from the import inbox hook", async () => {
+    const importUrl = vi.fn();
+    const consoleLog = vi.spyOn(console, "log").mockImplementation(() => {});
+    const tempRecipeRepository: TempRecipeRepository = {
+      list: async () => [],
+      remove: async () => {},
+    };
+    render(
+      <App
+        authService={fakeAuthService().service}
+        recipeReader={{ list: async () => [] }}
+        recipeService={fakeRecipeService()}
+        tempRecipeRepository={tempRecipeRepository}
+        onImportUrl={importUrl}
+      />,
+    );
+
+    await screen.findByRole("searchbox");
+    fireEvent.click(screen.getByRole("button", { name: "Import" }));
+    await screen.findByText("No imported recipes waiting for review.");
+    fireEvent.change(screen.getByLabelText("Recipe URL"), {
+      target: { value: "  https://example.com/recipe  " },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Import URL" }));
+
+    expect(importUrl).toHaveBeenCalledWith("https://example.com/recipe");
+    expect(consoleLog).toHaveBeenCalledWith(
+      "[Cookmarked] Received recipe URL:",
+      "https://example.com/recipe",
+      "Planned action: create a temporary recipe for review.",
+    );
+    consoleLog.mockRestore();
+  });
+
   it("reloads the recipe library after a successful recipe save", async () => {
     let loadCount = 0;
     const recipeReader: RecipeReader = {
