@@ -19,14 +19,14 @@ const filters = ["All recipes", "Breakfast", "Dinner", "Dessert"];
 const pageLabels = {
   home: "Home / Library",
   planner: "Planner",
-  import: "Import",
+  add: "Add",
   settings: "Settings",
 };
 type Page = keyof typeof pageLabels;
 const navigation = [
   ["home", "Home"],
   ["planner", "Planner"],
-  ["import", "Import"],
+  ["add", "Add"],
   ["settings", "Settings"],
 ] as const;
 
@@ -52,7 +52,7 @@ function NavigationIcon({ type }: { type: Page }) {
         □
       </span>
     );
-  if (type === "import")
+  if (type === "add")
     return (
       <span aria-hidden="true" className="nav-symbol">
         ↓
@@ -229,7 +229,7 @@ function SignedInApp({
             </>
           )}
           {page === "planner" && <PlannerPage />}
-          {page === "import" && (
+          {page === "add" && (
             <>
               {tempRecipeRepository && (
                 <section className="page-panel import-inbox" aria-labelledby="import-inbox-heading">
@@ -464,10 +464,7 @@ export default function App({
               </button>
             </section>
           ) : (
-            <LoginPage
-              authService={authService}
-              onSignedIn={setUser}
-            />
+            <LoginPage authService={authService} onSignedIn={setUser} />
           )}
         </div>
       </section>

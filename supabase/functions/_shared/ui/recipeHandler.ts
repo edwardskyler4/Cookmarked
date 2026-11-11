@@ -3,9 +3,9 @@ import type {
   RecipeInput as LegacyRecipeInput,
   RecipeReader,
 } from "../domain/Recipe.ts";
-import { 
-  RecipeError, 
-  type RecipeRepository 
+import {
+  RecipeError,
+  type RecipeRepository,
 } from "../domain/RecipeRepository.ts";
 import { createRecipe } from "../services/createRecipe.ts";
 import { listRecipes } from "../services/listRecipes.ts";
@@ -26,7 +26,11 @@ function responseHeaders(origin: string | null, origins: string[]): Headers {
   return headers;
 }
 
-function jsonResponse(status: number, body: unknown, headers: Headers): Response {
+function jsonResponse(
+  status: number,
+  body: unknown,
+  headers: Headers,
+): Response {
   return new Response(JSON.stringify(body), { status, headers });
 }
 
@@ -56,6 +60,9 @@ export async function handleRecipe(
     | RecipeCreator
     | string[],
   originsArgument?: string[],
+  repositoryOrVerifier:
+    LegacyRepository | ((token: string) => Promise<string | null>),
+  origins: string[],
 ): Promise<Response> {
   const origins = Array.isArray(verifyTokenOrCreator)
     ? verifyTokenOrCreator
@@ -75,7 +82,11 @@ export async function handleRecipe(
       if (!repository.list)
         return jsonResponse(503, { code: "unavailable" }, headers);
       try {
-        return jsonResponse(200, await listRecipes(repository, authUserId), headers);
+        return jsonResponse(
+          200,
+          await listRecipes(repository, authUserId),
+          headers,
+        );
       } catch (error) {
         console.error("Unable to list recipes", error);
         return jsonResponse(503, { code: "unavailable" }, headers);
@@ -124,7 +135,11 @@ export async function handleRecipe(
     } catch {
       throw new RecipeError("invalid_input");
     }
-    return jsonResponse(201, await createRecipe(repository, authUserId, body), headers);
+    return jsonResponse(
+      201,
+      await createRecipe(repository, authUserId, body),
+      headers,
+    );
   } catch (error) {
     const failure =
       error instanceof RecipeError ? error : new RecipeError("unavailable");
@@ -138,7 +153,10 @@ export async function handleRecipe(
             : 503;
     return jsonResponse(
       status,
-      { code: failure.code, ...(failure.field ? { field: failure.field } : {}) },
+      {
+        code: failure.code,
+        ...(failure.field ? { field: failure.field } : {}),
+      },
       headers,
     );
   }
