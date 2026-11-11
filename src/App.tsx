@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import PlannerPage from "./ui/routes/PlannerPage";
 import ImportPage from "./ui/routes/ImportPage";
 import SettingsPage from "./ui/routes/SettingsPage";
@@ -11,6 +11,9 @@ import type { Recipe } from "./domain/models/Recipe";
 import type { RecipeReader } from "./domain/repositories/RecipeReader";
 import { listRecipes } from "./services/listRecipes";
 import type { ProfileService } from "./services/profileService";
+import type { TempRecipe } from "./domain/models/TempRecipe";
+import type { TempRecipeRepository } from "./domain/repositories/TempRecipeRepository";
+import { convertTempRecipe } from "./services/convertTempRecipe";
 
 const filters = ["All recipes", "Breakfast", "Dinner", "Dessert"];
 const pageLabels = {
@@ -72,6 +75,8 @@ function SignedInApp({
   profileService,
   recipeService,
   recipeReader,
+  tempRecipeRepository,
+  onImportUrl,
 }: {
   recipeService: RecipeService;
   profileService?: ProfileService;
@@ -82,30 +87,47 @@ function SignedInApp({
   darkMode: boolean;
   onSaveDarkMode: (darkMode: boolean) => void;
   recipeReader: RecipeReader;
+  tempRecipeRepository?: TempRecipeRepository;
+  onImportUrl: (url: string) => void | Promise<void>;
 }) {
   const [page, setPage] = useState<Page>("home");
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [recipesLoading, setRecipesLoading] = useState(true);
   const [recipesError, setRecipesError] = useState<string | null>(null);
+  const [tempRecipes, setTempRecipes] = useState<TempRecipe[]>([]);
+  const [selectedTempRecipeId, setSelectedTempRecipeId] = useState<number | null>(null);
+
+  const reloadRecipes = useCallback(async () => {
+    setRecipesLoading(true);
+    setRecipesError(null);
+    try {
+      setRecipes(await listRecipes(recipeReader));
+    } catch {
+      setRecipesError("Unable to load your recipes.");
+    } finally {
+      setRecipesLoading(false);
+    }
+  }, [recipeReader]);
+
+  useEffect(() => {
+    void reloadRecipes();
+  }, [reloadRecipes]);
 
   useEffect(() => {
     let active = true;
-    setRecipesLoading(true);
-    setRecipesError(null);
-    listRecipes(recipeReader)
-      .then((nextRecipes) => {
-        if (active) setRecipes(nextRecipes);
+    if (!tempRecipeRepository) return;
+    tempRecipeRepository
+      .list()
+      .then((nextTempRecipes) => {
+        if (active) setTempRecipes(nextTempRecipes);
       })
       .catch(() => {
-        if (active) setRecipesError("Unable to load your recipes.");
-      })
-      .finally(() => {
-        if (active) setRecipesLoading(false);
+        if (active) setTempRecipes([]);
       });
     return () => {
       active = false;
     };
-  }, [recipeReader]);
+  }, [tempRecipeRepository]);
   const [displayName, setDisplayName] = useState("");
 
   useEffect(() => {
@@ -207,7 +229,93 @@ function SignedInApp({
             </>
           )}
           {page === "planner" && <PlannerPage />}
-          {page === "add" && <ImportPage recipeService={recipeService} />}
+          {page === "add" && (
+            <>
+              {tempRecipeRepository && (
+                <section className="page-panel import-inbox" aria-labelledby="import-inbox-heading">
+                  <p className="eyebrow">Import inbox</p>
+                  <h2 id="import-inbox-heading">Imported recipes:</h2>
+                  {tempRecipes.length === 0 ? (
+                    <p>No imported recipes waiting for review.</p>
+                  ) : (
+                    <div>
+                      {tempRecipes.map((tempRecipe) => (
+                        <button
+                          type="button"
+                          className={
+                            selectedTempRecipeId === tempRecipe.recipeId
+                              ? "filter-chip active"
+                              : "filter-chip"
+                          }
+                          key={tempRecipe.recipeId}
+                          onClick={() => setSelectedTempRecipeId(tempRecipe.recipeId)}
+                        >
+                          {tempRecipe.title}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  <form
+                    className="import-url-form"
+                    onSubmit={(event) => {
+                      event.preventDefault();
+                      const form = event.currentTarget;
+                      const url = new FormData(form).get("recipeUrl");
+                      if (typeof url === "string") {
+                        const trimmedUrl = url.trim();
+                        console.log(
+                          "[Cookmarked] Received recipe URL:",
+                          trimmedUrl,
+                          "Planned action: create a temporary recipe for review.",
+                        );
+                        void onImportUrl(trimmedUrl);
+                      }
+                    }}
+                  >
+                    <label className="editor-field">
+                      <span>Recipe URL</span>
+                      <input
+                        type="url"
+                        name="recipeUrl"
+                        placeholder="https://example.com/recipe"
+                        required
+                      />
+                    </label>
+                    <button className="filter-chip active" type="submit">
+                      Import URL
+                    </button>
+                  </form>
+                </section>
+              )}
+              <ImportPage
+                recipeService={recipeService}
+                tempRecipe={tempRecipes.find(
+                  (tempRecipe) => tempRecipe.recipeId === selectedTempRecipeId,
+                )}
+                saveRecipe={
+                  selectedTempRecipeId !== null && tempRecipeRepository
+                    ? (draft) =>
+                        convertTempRecipe(
+                          recipeService,
+                          tempRecipeRepository,
+                          selectedTempRecipeId,
+                          draft,
+                        ).then((result) => {
+                          setTempRecipes((current) =>
+                            current.filter(
+                              (tempRecipe) =>
+                                tempRecipe.recipeId !== selectedTempRecipeId,
+                            ),
+                          );
+                          setSelectedTempRecipeId(null);
+                          return result;
+                        })
+                    : undefined
+                }
+                onSaved={reloadRecipes}
+              />
+            </>
+          )}
           {page === "settings" && (
             <SettingsPage
               username={user.username}
@@ -244,11 +352,15 @@ export default function App({
   profileService,
   recipeService,
   recipeReader = emptyRecipeReader,
+  tempRecipeRepository,
+  onImportUrl = () => {},
 }: {
   authService: AuthService;
   profileService?: ProfileService;
   recipeService: RecipeService;
   recipeReader?: RecipeReader;
+  tempRecipeRepository?: TempRecipeRepository;
+  onImportUrl?: (url: string) => void | Promise<void>;
 }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
@@ -323,6 +435,8 @@ export default function App({
           darkMode={darkMode}
           onSaveDarkMode={setDarkMode}
           recipeReader={recipeReader}
+          tempRecipeRepository={tempRecipeRepository}
+          onImportUrl={onImportUrl}
         />
       </>
     );
