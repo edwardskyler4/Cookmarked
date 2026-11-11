@@ -1,25 +1,29 @@
 # Recipe App
 
 ### Team Members
-Evan Crenshaw, 
-Ruby Larson, 
-Alex Hooper, 
-EmilyRose Beck, 
+
+Evan Crenshaw,
+Ruby Larson,
+Alex Hooper,
+EmilyRose Beck,
 Kyler Edwards (Landlord)
 
 ## Software Description
 
 A recipe collection app designed to accept recipes shared from social media, store them, and allow the user to assign those meals to a calendar for the week.
 
-### 
+###
+
 [Live Cloudflare server](https://cookmarked.edw20009.workers.dev/)
+
 ## Architecture
+
 - **Platform:** PWA
 - **Language:** TypeScript
 - **Frameworks:** React with TypeScript and Vite
 - **Data storage:** Supabase
 - **Test framework:** ViTest
-- **Development tools** Visual Studio Code, GitHub 
+- **Development tools** Visual Studio Code, GitHub
 
 ## Software Features
 
@@ -43,7 +47,6 @@ By the end of Sprint 5, users should be able to:
 - Assign, replace, and remove recipes from meal slots.
 - Use the app comfortably on a phone and desktop.
 
-
 #### 5 Sprint plan
 
 | Sprint | Main milestone                  | Important work                                                                                                                                | Exit criterion                                                    |
@@ -54,25 +57,25 @@ By the end of Sprint 5, users should be able to:
 | 4      | Weekly meal planner             | Week navigation, seven-day layout, meal slots, assign/change/remove recipes, mobile layout                                                    | Users can plan an entire week                                     |
 | 5      | Production hardening            | End-to-end testing, permissions, security, accessibility, performance, error states, deployment, backups/export, documentation, beta feedback | A small group can use the app without developer assistance        |
 
-
 ## Team Communication
- - SMS
- - Outlook
+
+- SMS
+- Outlook
 
 ## Team Responsibility
 
-|Responsibility                      |Team Member(s)              |
-|------------------------------------|----------------------------|
-|Conducting Meetings                 |      Alex                  |
-|Maintaining Team Assignment List    |     Ruby                   |
-|Ensuring GitHub is Working          |          Kyler             |
-|Maintaining Documentation           |      Evan                  |
-|Create & Display Presentations      |        EmilyRose           |
-|Submit Team Assignments             |          Evan              |
-|Landlord                            |              Kyler         |
+| Responsibility                   | Team Member(s) |
+| -------------------------------- | -------------- |
+| Conducting Meetings              | Alex           |
+| Maintaining Team Assignment List | Ruby           |
+| Ensuring GitHub is Working       | Kyler          |
+| Maintaining Documentation        | Evan           |
+| Create & Display Presentations   | EmilyRose      |
+| Submit Team Assignments          | Evan           |
+| Landlord                         | Kyler          |
 
 <!-- Final Sprint
-## Reflections 
+## Reflections
 -->
 
 ## Authentication
@@ -228,6 +231,88 @@ in a disposable PostgreSQL container. Verify a manual save with two separate
 accounts in the development project after deployment; hosted services are not
 contacted by the automated tests.
 
+## PWA installation and incoming shares
+
+The manifest at `public/manifest.webmanifest` identifies Cookmarked as an
+installable app and registers `/share-target` for incoming URL/text shares.
+The 192px and 512px PNG icons are resized copies of `public/logo.jpg`.
+Deploy over HTTPS before checking installation on a phone. See
+[Chrome's installation requirements](https://web.dev/articles/install-criteria).
+
+The collection function is not implemented yet. Visiting `/share-target` keeps
+the incoming query in the address bar and shows the normal app: Login while
+signed out, then Home after authentication. Incoming shares do not open Add,
+prefill its fields, display share instructions there, or save a manual recipe.
+Add remains available for manual recipe entry, including pasting a Source URL.
+
+The intended collection flow is `/share-target` → collection function →
+`temp_recipe` → inbox. Automatic capture, the loading pop-up, capture result
+messages, and inbox refresh will be connected when the collection interface and
+inbox UI are ready.
+
+The incoming address uses a GET query, for example:
+
+```text
+/share-target?url=https%3A%2F%2Fwww.instagram.com%2Fp%2Fexample%2F
+```
+
+`src/data/browserShareTarget.ts` is a query-decoding helper for the future
+collection handoff. It returns a `SharedLink` with the explicit URL field when
+supplied, otherwise a single HTTP(S) link extracted from `text`. The original
+`text` is retained. Text with several links leaves the decoded URL empty.
+Startup does not currently call this helper or pass share data into the manual
+Add form. Platform validation, canonicalization, metadata retrieval, and
+ownership belong to the Edge Function collection flow.
+
+Session restoration and login/registration keep the incoming query in the
+address bar, including after an authentication error or reload. The query remains
+pending in this phase. When capture is connected, clear the pending query only
+after its final result: success/partial success must confirm the draft was saved;
+failure must retain the source link in the error UI. Returning to an ordinary
+app URL still opens Home.
+
+### Device verification (pending on physical devices)
+
+The receiving share target is supported by Android Chrome. iPhone Safari does
+not currently implement receiving shares via `share_target`; its flow is
+copy link, open Cookmarked, and paste into Add. Installation on an iPhone does
+not enable the Android receiving behavior. See
+[browser compatibility](https://github.com/mdn/browser-compat-data/blob/main/manifests/webapp/share_target.json)
+and [receiving shared data](https://developer.chrome.com/docs/capabilities/web-apis/web-share-target).
+
+Use the team's approved public Facebook, Pinterest, and Instagram sample links.
+Record the device model, OS/browser versions, and results before marking these
+checks complete:
+
+- [ ] Android Chrome: install from the HTTPS deployment; confirm Cookmarked
+      appears in the native share menu.
+- [ ] Android Chrome: share with Cookmarked closed, then again while it is
+      already open. Confirm the share query reaches `/share-target` and the app
+      opens Home after authentication. Manually open Add and confirm it is empty.
+- [ ] Android Chrome: share while signed out, try an incorrect password, reload
+      the login screen, then sign in. Confirm the same share query remains in the
+      address bar and Add does not open automatically.
+- [ ] Android Chrome: share text containing one link, then text containing two
+      links. Confirm the query retains the shared text and Add displays no
+      share-specific fields or instructions.
+- [ ] iPhone Safari: add Cookmarked to the Home Screen, launch it, sign in if
+      necessary, and paste each sample link into Add's Source URL field.
+- [ ] Both devices: confirm manual entry and Clear still work. Receiving a share
+      must not claim extraction succeeded or automatically save a manual recipe.
+
+`pnpm test:run` covers the query-decoding helper, share query retention through
+authentication and reload/retry, isolation from manual entry, manifest
+registration, and actual PNG dimensions without network access.
+`pnpm preview:cloudflare` builds and starts the local Cloudflare preview for
+checking direct navigation to `/share-target` before deployment. Native mobile
+installation and sharing still require the device checks above.
+
+Desktop verification on 2026-11-11 used Chrome 157.0.8103.38 against Wrangler
+4.141.0's local Cloudflare preview. Chrome reported no manifest or installability
+errors. Its share-flow checks covered the earlier Add-prefill behavior and need
+to be repeated for the current flow. Backend requests in the signed-in browser
+check were mocked; no production API calls or database writes were made. These
+results do not complete the physical-device checklist.
 ### Temporary recipe review
 
 The Import page can review rows from `public.temp_recipe`. Imported `text` is shown
