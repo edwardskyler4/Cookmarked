@@ -313,3 +313,20 @@ errors. Its share-flow checks covered the earlier Add-prefill behavior and need
 to be repeated for the current flow. Backend requests in the signed-in browser
 check were mocked; no production API calls or database writes were made. These
 results do not complete the physical-device checklist.
+### Temporary recipe review
+
+The Import page can review rows from `public.temp_recipe`. Imported `text` is shown
+as untrusted reference material; it is not automatically placed into ingredients,
+directions, notes, or nutrition. The imported title and source URL are used as
+starting values, and the user copies any useful content into the normal recipe form.
+
+Saving a reviewed item uses the normal recipe-save function first. The temporary row
+is deleted only after the permanent recipe is created successfully. Apply
+`supabase/migrations/202611060001_temp_recipe_ownership.sql`, deploy the
+`temp_recipes` Edge Function, and rebuild the frontend:
+
+```sh
+pnpm exec supabase db push
+pnpm exec supabase functions deploy temp_recipes
+pnpm deploy
+```

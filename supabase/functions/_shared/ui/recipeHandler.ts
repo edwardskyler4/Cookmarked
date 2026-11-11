@@ -37,7 +37,7 @@ function jsonResponse(
 export function handleRecipe(
   request: Request,
   authUserId: string,
-  repository: LegacyRepository,
+  creator: LegacyRepository,
   origins: string[],
 ): Promise<Response>;
 
@@ -51,10 +51,22 @@ export function handleRecipe(
 export async function handleRecipe(
   request: Request,
   authOrRepository: string | RecipeRepository,
+  repositoryOrAuthUserId:
+    | RecipeRepository
+    | string
+    | ((token: string) => Promise<string | null>),
+  verifyTokenOrCreator:
+    | ((token: string) => Promise<string | null>)
+    | RecipeCreator
+    | string[],
+  originsArgument?: string[],
   repositoryOrVerifier:
     LegacyRepository | ((token: string) => Promise<string | null>),
   origins: string[],
 ): Promise<Response> {
+  const origins = Array.isArray(verifyTokenOrCreator)
+    ? verifyTokenOrCreator
+    : (originsArgument ?? []);
   const origin = request.headers.get("Origin");
   const headers = responseHeaders(origin, origins);
 
@@ -65,7 +77,7 @@ export async function handleRecipe(
 
   if (typeof authOrRepository === "string") {
     const authUserId = authOrRepository;
-    const repository = repositoryOrVerifier as LegacyRepository;
+    const repository = repositoryOrAuthUserId as LegacyRepository;
     if (request.method === "GET") {
       if (!repository.list)
         return jsonResponse(503, { code: "unavailable" }, headers);
@@ -102,7 +114,7 @@ export async function handleRecipe(
   }
 
   const repository = authOrRepository as RecipeRepository;
-  const verifyToken = repositoryOrVerifier as (
+  const verifyToken = repositoryOrAuthUserId as (
     token: string,
   ) => Promise<string | null>;
   if (request.method !== "POST")
@@ -112,6 +124,9 @@ export async function handleRecipe(
       .get("Authorization")
       ?.match(/^Bearer\s+(\S+)$/i)?.[1];
     if (!token) throw new RecipeError("unauthorized");
+    const verifyToken = repositoryOrAuthUserId as (
+      token: string,
+    ) => Promise<string | null>;
     const authUserId = await verifyToken(token);
     if (!authUserId) throw new RecipeError("unauthorized");
     let body: unknown;

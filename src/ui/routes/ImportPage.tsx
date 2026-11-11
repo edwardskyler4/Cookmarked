@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { RecipeService } from "../../services/recipeService";
 import { RecipeSaveError } from "../../domain/repositories/RecipeApiRepository";
+import type { TempRecipe } from "../../domain/models/TempRecipe";
 
 const urlMessage =
   "Source URL must include a valid domain (such as example.com) or be empty.";
@@ -30,8 +31,14 @@ function normalizeSourceUrl(value: string): string | null {
 
 export default function ImportPage({
   recipeService,
+  tempRecipe,
+  saveRecipe,
+  onSaved,
 }: {
   recipeService: RecipeService;
+  tempRecipe?: TempRecipe;
+  saveRecipe?: RecipeService["create"];
+  onSaved?: () => void | Promise<void>;
 }) {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [checked, setChecked] = useState(false);
@@ -99,7 +106,7 @@ export default function ImportPage({
     submitting.current = true;
     setPending(true);
     try {
-      await recipeService.create({
+      const draft = {
         title: text("title"),
         prepTime: text("prepTime"),
         servings: Number(text("servingSize")),
@@ -110,9 +117,11 @@ export default function ImportPage({
         url: sourceUrl ? normalizeSourceUrl(sourceUrl)! : "",
         note: text("notes"),
         nutritionInfo: text("nutrition"),
-      });
+      };
+      await (saveRecipe ?? recipeService.create)(draft);
       form.reset();
       setSaved(true);
+      void onSaved?.();
     } catch (failure) {
       if (
         failure instanceof RecipeSaveError &&
@@ -175,6 +184,26 @@ export default function ImportPage({
         Add
       </h2>
       <h3 id="recipe-heading">New Recipe</h3>
+      {tempRecipe && (
+        <aside className="imported-recipe-reference" aria-labelledby="imported-recipe-heading">
+          <p className="eyebrow">Imported reference</p>
+          <h4 id="imported-recipe-heading">{tempRecipe.title}</h4>
+          {tempRecipe.sharedFromPlatform && <p>Shared from {tempRecipe.sharedFromPlatform}</p>}
+          {tempRecipe.url && (
+            <p>
+              <a href={tempRecipe.url} target="_blank" rel="noreferrer">
+                Open original post
+              </a>
+            </p>
+          )}
+          {tempRecipe.text && (
+            <div>
+              <p>Imported text — copy only the details you want to keep:</p>
+              <pre>{tempRecipe.text}</pre>
+            </div>
+          )}
+        </aside>
+      )}
       <form
         className="recipe-editor-form"
         noValidate
@@ -212,7 +241,12 @@ export default function ImportPage({
         {/* Wrapping each control in its label associates that label with only that field. */}
         <label className="editor-field" style={fieldStyle}>
           <span id="source-label">Source URL</span>
-          <input type="url" name="source" {...validationAttributes("source")} />
+          <input
+            type="url"
+            name="source"
+            defaultValue={tempRecipe?.url ?? ""}
+            {...validationAttributes("source")}
+          />
           {fieldError("source")}
         </label>
         <label className="editor-field" style={fieldStyle}>
@@ -223,6 +257,7 @@ export default function ImportPage({
             type="text"
             name="title"
             maxLength={45}
+            defaultValue={tempRecipe?.title ?? ""}
             {...validationAttributes("title")}
             required
           />
