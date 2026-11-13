@@ -14,6 +14,7 @@ import type { ProfileService } from "./services/profileService";
 import type { TempRecipe } from "./domain/models/TempRecipe";
 import type { TempRecipeRepository } from "./domain/repositories/TempRecipeRepository";
 import { convertTempRecipe } from "./services/convertTempRecipe";
+import type { RecipeMetadataService } from "./services/recipeMetadataService";
 
 const filters = ["All recipes", "Breakfast", "Dinner", "Dessert"];
 const pageLabels = {
@@ -74,11 +75,13 @@ function SignedInApp({
   onSaveDarkMode,
   profileService,
   recipeService,
+  recipeMetadataService,
   recipeReader,
   tempRecipeRepository,
   onImportUrl,
 }: {
   recipeService: RecipeService;
+  recipeMetadataService: RecipeMetadataService;
   profileService?: ProfileService;
   user: AuthUser;
   onLogout: () => void;
@@ -289,6 +292,7 @@ function SignedInApp({
               )}
               <ImportPage
                 recipeService={recipeService}
+                recipeMetadataService={recipeMetadataService}
                 tempRecipe={tempRecipes.find(
                   (tempRecipe) => tempRecipe.recipeId === selectedTempRecipeId,
                 )}
@@ -351,6 +355,7 @@ export default function App({
   authService,
   profileService,
   recipeService,
+  recipeMetadataService,
   recipeReader = emptyRecipeReader,
   tempRecipeRepository,
   onImportUrl = () => {},
@@ -358,6 +363,7 @@ export default function App({
   authService: AuthService;
   profileService?: ProfileService;
   recipeService: RecipeService;
+  recipeMetadataService: RecipeMetadataService;
   recipeReader?: RecipeReader;
   tempRecipeRepository?: TempRecipeRepository;
   onImportUrl?: (url: string) => void | Promise<void>;
@@ -426,6 +432,7 @@ export default function App({
         )}
         <SignedInApp
           profileService={profileService}
+          recipeMetadataService={recipeMetadataService}
           onSavePassword={authService.updatePassword}
           recipeService={recipeService}
           key={user.id}

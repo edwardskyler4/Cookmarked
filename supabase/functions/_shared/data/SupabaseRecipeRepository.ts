@@ -34,6 +34,9 @@ export class SupabaseRecipeRepository implements RecipeRepository {
         url: recipe.url || null,
         note: recipe.note || null,
         nutrition_info: recipe.nutritionInfo || null,
+        description: recipe.description || null,
+        shared_from_platform: recipe.sharedFromPlatform || null,
+        thumbnail_url: recipe.thumbnailUrl || null,
       })
       .select("recipe_id")
       .single();

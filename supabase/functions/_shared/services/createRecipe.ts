@@ -78,6 +78,9 @@ export async function createRecipe(
     url: normalizedUrl,
     note: text("note"),
     nutritionInfo: text("nutritionInfo"),
+    description: text("description"),
+    sharedFromPlatform: text("sharedFromPlatform"),
+    thumbnailUrl: text("thumbnailUrl"),
   };
   return source.insert(validated);
 }

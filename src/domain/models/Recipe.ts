@@ -1,3 +1,5 @@
+import type { RecipePlatform } from "./RecipeMetaData.ts";
+
 export type MealType =
   | "Breakfast"
   | "Lunch"
@@ -25,7 +27,7 @@ export interface RecipeInput {
   servings?: number;
   mealType: MealType;
   course: Course;
-  sharedFromPlatform?: string;
+  sharedFromPlatform?: RecipePlatform;
   url?: string;
   mediaType?: string;
   thumbnailUrl?: string;

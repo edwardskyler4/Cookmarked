@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import type { RecipeService } from "../../services/recipeService";
 import { RecipeSaveError } from "../../domain/repositories/RecipeApiRepository";
 import type { TempRecipe } from "../../domain/models/TempRecipe";
+import type { RecipeMetadataService } from "../../services/recipeMetadataService";
 
 const urlMessage =
   "Source URL must include a valid domain (such as example.com) or be empty.";
@@ -31,17 +32,26 @@ function normalizeSourceUrl(value: string): string | null {
 
 export default function ImportPage({
   recipeService,
+  recipeMetadataService,
   tempRecipe,
   saveRecipe,
   onSaved,
 }: {
   recipeService: RecipeService;
+  recipeMetadataService: RecipeMetadataService;
   tempRecipe?: TempRecipe;
   saveRecipe?: RecipeService["create"];
   onSaved?: () => void | Promise<void>;
 }) {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [checked, setChecked] = useState(false);
+
+  const [metadata, setMetadata] = useState<{
+    platform: string;
+    sourceUrl: string;
+  } | null>(null);
+  const [metadataLoading, setMetadataLoading] = useState(false);
+  const [metadataError, setMetadataError] = useState<string | null>(null);
 
   const [pending, setPending] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -95,6 +105,41 @@ export default function ImportPage({
     return Object.keys(nextErrors).length === 0;
   }
 
+    async function checkMetadata(source: string) {
+    const normalizedUrl = normalizeSourceUrl(source.trim());
+
+    if (!source.trim()) {
+      setMetadata(null);
+      setMetadataError(null);
+      return;
+    }
+
+    if (!normalizedUrl) {
+      setMetadata(null);
+      setMetadataError(urlMessage);
+      return;
+    }
+
+    setMetadataLoading(true);
+    setMetadataError(null);
+
+    try {
+      const result = await recipeMetadataService.getMetadata(normalizedUrl);
+
+      setMetadata({
+        platform: result.platform,
+        sourceUrl: result.sourceUrl,
+      });
+    } catch {
+      setMetadata(null);
+      setMetadataError(
+        "Unable to check this link. You can still enter the recipe manually.",
+      );
+    } finally {
+      setMetadataLoading(false);
+    }
+  }
+
   async function save(form: HTMLFormElement) {
     if (submitting.current) return;
     setSaved(false);
@@ -117,9 +162,15 @@ export default function ImportPage({
         url: sourceUrl ? normalizeSourceUrl(sourceUrl)! : "",
         note: text("notes"),
         nutritionInfo: text("nutrition"),
+        description: text("description"),
+        sharedFromPlatform:
+          metadata?.platform ?? tempRecipe?.sharedFromPlatform ?? "",
+        thumbnailUrl: text("thumbnailUrl"),
       };
       await (saveRecipe ?? recipeService.create)(draft);
       form.reset();
+      setMetadata(null);
+      setMetadataError(null);
       setSaved(true);
       void onSaved?.();
     } catch (failure) {
@@ -216,6 +267,8 @@ export default function ImportPage({
           setChecked(false);
           setSaved(false);
           setSaveError(null);
+          setMetadata(null);
+          setMetadataError(null);
         }}
       >
         {saveError && (
@@ -245,10 +298,29 @@ export default function ImportPage({
             type="url"
             name="source"
             defaultValue={tempRecipe?.url ?? ""}
+            onBlur={(event) => {
+              void checkMetadata(event.currentTarget.value);
+            }}
             {...validationAttributes("source")}
           />
           {fieldError("source")}
         </label>
+        {metadataLoading && (
+          <p role="status">Checking source link…</p>
+        )}
+
+        {metadata?.platform && (
+          <p role="status">
+            Detected platform: <strong>{metadata.platform}</strong>
+          </p>
+        )}
+
+        {metadataError && (
+          <p className="editor-field-error" role="alert">
+            {metadataError}
+          </p>
+        )}
+        
         <label className="editor-field" style={fieldStyle}>
           <span id="title-label">
             Recipe Title <span className="field-hint">(Required)</span>
@@ -262,6 +334,24 @@ export default function ImportPage({
             required
           />
           {fieldError("title")}
+        </label>
+                <label className="editor-field" style={fieldStyle}>
+          <span>Description</span>
+          <textarea
+            name="description"
+            rows={3}
+            placeholder="Describe the recipe..."
+          />
+        </label>
+
+        <label className="editor-field" style={fieldStyle}>
+          <span>Thumbnail URL</span>
+          <input
+            type="url"
+            name="thumbnailUrl"
+            defaultValue={tempRecipe?.thumbnailUrl ?? ""}
+            placeholder="https://example.com/image.jpg"
+          />
         </label>
         <div className="editor-field-row">
           <label className="editor-field" style={fieldStyle}>

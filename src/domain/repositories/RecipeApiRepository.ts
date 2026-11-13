@@ -10,6 +10,9 @@ export interface RecipeDraft {
   url: string;
   note: string;
   nutritionInfo: string;
+  description?: string;
+  sharedFromPlatform?: string;
+  thumbnailUrl?: string;
 }
 
 export interface RecipeApiRepository {
