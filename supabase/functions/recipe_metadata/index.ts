@@ -2,7 +2,7 @@
 import {
   createClient,
   type SupabaseClient,
-} from "npm:@supabase/supabase-js@2.57.4";
+} from "@supabase/supabase-js";
 
 import type { RecipeMetadata } from "../_shared/domain/RecipeMetadata.ts";
 

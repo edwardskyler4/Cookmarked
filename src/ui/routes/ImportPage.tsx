@@ -30,6 +30,23 @@ function normalizeSourceUrl(value: string): string | null {
   }
 }
 
+function isValidThumbnailUrl(value: string): boolean {
+  if (!value.trim()) return true;
+
+  try {
+    const url = new URL(value.trim());
+
+    return (
+      (url.protocol === "http:" || url.protocol === "https:") &&
+      /^[^.]+\..+/.test(url.hostname) &&
+      !url.hostname.endsWith(".")
+    );
+  } catch {
+    return false;
+  }
+}
+
+
 export default function ImportPage({
   recipeService,
   recipeMetadataService,
@@ -58,6 +75,7 @@ export default function ImportPage({
   const [saveError, setSaveError] = useState<string | null>(null);
   const submitting = useRef(false);
   const savedMessage = useRef<HTMLDivElement>(null);
+  const metadataRequestId = useRef(0);
 
   useEffect(() => {
     // Focusing also brings the confirmation into view after saving at the bottom.
@@ -98,6 +116,13 @@ export default function ImportPage({
       ) {
         nextErrors[field.name] = "Use 45 characters or fewer.";
       }
+      else if (
+        field.name === "thumbnailUrl" &&
+        field.value.trim() &&
+        !isValidThumbnailUrl(field.value)
+      ) {
+        nextErrors.thumbnailUrl = "Enter a valid HTTP or HTTPS thumbnail URL.";
+      }
     }
     setErrors(nextErrors);
     setChecked(true);
@@ -106,37 +131,47 @@ export default function ImportPage({
   }
 
     async function checkMetadata(source: string) {
-    const normalizedUrl = normalizeSourceUrl(source.trim());
+      const requestId = ++metadataRequestId.current;
+      const normalizedUrl = normalizeSourceUrl(source.trim());
 
     if (!source.trim()) {
       setMetadata(null);
       setMetadataError(null);
+      setMetadataLoading(false);
       return;
     }
 
     if (!normalizedUrl) {
       setMetadata(null);
       setMetadataError(urlMessage);
+      setMetadataLoading(false);
       return;
     }
 
+    setMetadata(null);
     setMetadataLoading(true);
     setMetadataError(null);
 
     try {
       const result = await recipeMetadataService.getMetadata(normalizedUrl);
 
+      if (requestId !== metadataRequestId.current) return;
+
       setMetadata({
         platform: result.platform,
         sourceUrl: result.sourceUrl,
       });
     } catch {
+      if (requestId !== metadataRequestId.current) return;
+
       setMetadata(null);
       setMetadataError(
         "Unable to check this link. You can still enter the recipe manually.",
       );
     } finally {
+      if (requestId === metadataRequestId.current) {
       setMetadataLoading(false);
+      }
     }
   }
 
@@ -148,6 +183,11 @@ export default function ImportPage({
     const values = new FormData(form);
     const text = (name: string) => String(values.get(name) ?? "").trim();
     const sourceUrl = text("source");
+    const normalizedSourceUrl = sourceUrl
+      ? normalizeSourceUrl(sourceUrl)!
+      : "";
+    const matchingMetadata =
+      metadata?.sourceUrl === normalizedSourceUrl ? metadata : null;
     submitting.current = true;
     setPending(true);
     try {
@@ -164,10 +204,16 @@ export default function ImportPage({
         nutritionInfo: text("nutrition"),
         description: text("description"),
         sharedFromPlatform:
-          metadata?.platform ?? tempRecipe?.sharedFromPlatform ?? "",
+          matchingMetadata?.platform ??
+          (normalizeSourceUrl(tempRecipe?.url ?? "") === normalizedSourceUrl
+            ? tempRecipe?.sharedFromPlatform
+            : "") ??
+          "",
         thumbnailUrl: text("thumbnailUrl"),
       };
       await (saveRecipe ?? recipeService.create)(draft);
+      metadataRequestId.current++;
+      setMetadataLoading(false);
       form.reset();
       setMetadata(null);
       setMetadataError(null);
@@ -263,6 +309,8 @@ export default function ImportPage({
           void save(event.currentTarget);
         }}
         onReset={() => {
+          metadataRequestId.current++;
+          setMetadataLoading(false);
           setErrors({});
           setChecked(false);
           setSaved(false);
@@ -298,6 +346,12 @@ export default function ImportPage({
             type="url"
             name="source"
             defaultValue={tempRecipe?.url ?? ""}
+            onChange={() => {
+              metadataRequestId.current++;
+              setMetadata(null);
+              setMetadataLoading(false);
+              setMetadataError(null);
+            }}
             onBlur={(event) => {
               void checkMetadata(event.currentTarget.value);
             }}
@@ -345,13 +399,31 @@ export default function ImportPage({
         </label>
 
         <label className="editor-field" style={fieldStyle}>
-          <span>Thumbnail URL</span>
+          <span id="thumbnailUrl-label">Thumbnail URL</span>
           <input
             type="url"
             name="thumbnailUrl"
             defaultValue={tempRecipe?.thumbnailUrl ?? ""}
             placeholder="https://example.com/image.jpg"
+            onChange={(event) => {
+              const value = event.currentTarget.value;
+
+              setErrors((previous) => {
+                const next = { ...previous };
+
+                if (!value.trim() || isValidThumbnailUrl(value)) {
+                  delete next.thumbnailUrl;
+                } else {
+                  next.thumbnailUrl =
+                    "Enter a valid HTTP or HTTPS thumbnail URL.";
+                }
+
+                return next;
+              });
+            }}
+            {...validationAttributes("thumbnailUrl")}
           />
+          {fieldError("thumbnailUrl")}
         </label>
         <div className="editor-field-row">
           <label className="editor-field" style={fieldStyle}>

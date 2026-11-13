@@ -30,7 +30,7 @@ describe("Cookmarked home", () => {
     );
 
     await screen.findByRole("searchbox");
-    fireEvent.click(screen.getByRole("button", { name: "Import" }));
+    fireEvent.click(screen.getByRole("button", { name: "Add" }));
     await screen.findByText("No imported recipes waiting for review.");
     fireEvent.change(screen.getByLabelText("Recipe URL"), {
       target: { value: "  https://example.com/recipe  " },
@@ -75,7 +75,7 @@ describe("Cookmarked home", () => {
       />,
     );
     await screen.findByText("No recipes saved yet.");
-    fireEvent.click(screen.getByRole("button", { name: "Import" }));
+    fireEvent.click(screen.getByRole("button", { name: "Add" }));
 
     for (const label of [
       "Recipe Title (Required)",

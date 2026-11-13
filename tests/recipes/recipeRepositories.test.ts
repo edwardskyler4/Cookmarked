@@ -66,6 +66,9 @@ describe("recipe repositories with the real SDK and local HTTP responses", () =>
       url: null,
       note: "Family favorite",
       nutrition_info: "100 kcal",
+      description: null,
+      shared_from_platform: null,
+      thumbnail_url: null,
     });
     expect(new URL(requests[0].url).pathname).toBe("/rest/v1/recipe");
     expect(requests[0].headers.get("Prefer")).toContain(

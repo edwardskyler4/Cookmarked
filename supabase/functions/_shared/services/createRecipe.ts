@@ -43,6 +43,24 @@ export async function createRecipe(
     throw new RecipeError("invalid_input", "mealType");
   if (!["Dessert", "Entree", "Side", "Beverage", "Appetizer", "N/A"].includes(course))
     throw new RecipeError("invalid_input", "course");
+
+  const thumbnailUrl = text("thumbnailUrl");
+
+  if (thumbnailUrl) {
+    try {
+      const parsedThumbnailUrl = new URL(thumbnailUrl);
+
+      if (
+        !["http:", "https:"].includes(parsedThumbnailUrl.protocol) ||
+        !parsedThumbnailUrl.hostname
+      ) {
+        throw new Error();
+      }
+    } catch {
+      throw new RecipeError("invalid_input", "thumbnailUrl");
+    }
+  }
+
   const url = text("url");
   let normalizedUrl = url;
   if (url) {
@@ -80,7 +98,7 @@ export async function createRecipe(
     nutritionInfo: text("nutritionInfo"),
     description: text("description"),
     sharedFromPlatform: text("sharedFromPlatform"),
-    thumbnailUrl: text("thumbnailUrl"),
+    thumbnailUrl,
   };
   return source.insert(validated);
 }
