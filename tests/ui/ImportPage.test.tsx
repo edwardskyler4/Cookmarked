@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 
 import {
+  act,
   cleanup,
   fireEvent,
   render,
@@ -17,6 +18,112 @@ import ImportPage from "../../src/ui/routes/ImportPage";
 import type { TempRecipe } from "../../src/domain/models/TempRecipe";
 
 afterEach(cleanup);
+
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+
+  const promise = new Promise<T>((res) => {
+    resolve = res;
+  });
+
+  return { promise, resolve };
+}
+
+describe("ImportPage metadata requests", () => {
+  it("ignores an older metadata response when a newer source was checked", async () => {
+    const firstRequest = deferred<{
+      platform: string;
+      sourceUrl: string;
+    }>();
+
+    const secondRequest = deferred<{
+      platform: string;
+      sourceUrl: string;
+    }>();
+
+    const recipeMetadataService = {
+      getMetadata: vi
+        .fn()
+        .mockReturnValueOnce(firstRequest.promise)
+        .mockReturnValueOnce(secondRequest.promise),
+    };
+
+    render(
+      <ImportPage
+        recipeService={fakeRecipeService()}
+        recipeMetadataService={recipeMetadataService}
+      />,
+    );
+
+    const source = screen.getByLabelText("Source URL");
+
+    fireEvent.change(source, {
+      target: { value: "https://instagram.com/first" },
+    });
+    fireEvent.blur(source);
+
+    fireEvent.change(source, {
+      target: { value: "https://facebook.com/second" },
+    });
+    fireEvent.blur(source);
+
+    await act(async () => {
+      secondRequest.resolve({
+        platform: "Facebook",
+        sourceUrl: "https://facebook.com/second",
+      });
+    });
+
+    expect(screen.getByText("Facebook")).toBeDefined();
+
+    await act(async () => {
+      firstRequest.resolve({
+        platform: "Instagram",
+        sourceUrl: "https://instagram.com/first",
+      });
+    });
+
+    expect(screen.getByText("Facebook")).toBeDefined();
+    expect(screen.queryByText("Instagram")).toBeNull();
+  });
+
+  it("ignores a metadata response that finishes after Clear is pressed", async () => {
+    const request = deferred<{
+      platform: string;
+      sourceUrl: string;
+    }>();
+
+    const recipeMetadataService = {
+      getMetadata: vi.fn(() => request.promise),
+    };
+
+    render(
+      <ImportPage
+        recipeService={fakeRecipeService()}
+        recipeMetadataService={recipeMetadataService}
+      />,
+    );
+
+    const source = screen.getByLabelText("Source URL");
+
+    fireEvent.change(source, {
+      target: { value: "https://instagram.com/recipe" },
+    });
+    fireEvent.blur(source);
+
+    fireEvent.click(screen.getByRole("button", { name: "Clear" }));
+
+    await act(async () => {
+      request.resolve({
+        platform: "Instagram",
+        sourceUrl: "https://instagram.com/recipe",
+      });
+    });
+
+    expect(screen.queryByText("Instagram")).toBeNull();
+    expect(screen.queryByText("Checking source link…")).toBeNull();
+  });
+});
 
 describe("ImportPage fields", () => {
   it("shows imported text as reference material without submitting it as a recipe field", () => {
@@ -346,6 +453,62 @@ describe("ImportPage validation", () => {
       ),
     ).toBeDefined();
   });
+    it("shows an error immediately for an invalid thumbnail URL", () => {
+    render(<ImportPage recipeService={fakeRecipeService()} />);
+
+    const thumbnail = screen.getByLabelText("Thumbnail URL");
+
+    fireEvent.change(thumbnail, {
+      target: { value: "not-a-url" },
+    });
+
+    expect(
+      screen.getByText(
+        "Enter a valid HTTP or HTTPS thumbnail URL.",
+      ),
+    ).toBeDefined();
+    expect(thumbnail.getAttribute("aria-invalid")).toBe("true");
+  });
+
+  it("prevents saving a recipe with an invalid thumbnail URL", () => {
+    render(<ImportPage recipeService={fakeRecipeService()} />);
+
+    fillRequiredFields();
+
+    fireEvent.change(screen.getByLabelText("Thumbnail URL"), {
+      target: { value: "not-a-url" },
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    expect(screen.getByRole("alert")).toBeDefined();
+    expect(
+      screen.getByText(
+        "Enter a valid HTTP or HTTPS thumbnail URL.",
+      ),
+    ).toBeDefined();
+    expect(screen.queryByText("Recipe saved")).toBeNull();
+  });
+
+  it("accepts a valid HTTPS thumbnail URL", async () => {
+    render(<ImportPage recipeService={fakeRecipeService()} />);
+
+    fillRequiredFields();
+
+    fireEvent.change(screen.getByLabelText("Thumbnail URL"), {
+      target: { value: "https://example.com/image.jpg" },
+    });
+
+    expect(
+      screen.queryByText(
+        "Enter a valid HTTP or HTTPS thumbnail URL.",
+      ),
+    ).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    expect(await screen.findByText("Recipe saved")).toBeDefined();
+  });
 });
 
 it("gives invalid recipe fields a stronger visible border", () => {
@@ -441,6 +604,9 @@ describe("recipe saving", () => {
       url: "https://example.com/soup",
       note: "Family favorite",
       nutritionInfo: "100 kcal",
+      description: "",
+      sharedFromPlatform: "",
+      thumbnailUrl: "",
     });
     for (const field of screen.getAllByRole("textbox") as HTMLInputElement[])
       expect(field.value).toBe("");

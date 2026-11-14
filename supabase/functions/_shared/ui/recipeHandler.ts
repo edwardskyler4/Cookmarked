@@ -60,9 +60,6 @@ export async function handleRecipe(
     | RecipeCreator
     | string[],
   originsArgument?: string[],
-  repositoryOrVerifier:
-    LegacyRepository | ((token: string) => Promise<string | null>),
-  origins: string[],
 ): Promise<Response> {
   const origins = Array.isArray(verifyTokenOrCreator)
     ? verifyTokenOrCreator

@@ -33,7 +33,7 @@ describe("SupabaseRecipeGateway", () => {
             recipe_id: 7,
             user_id: 42,
             title: "Tomato Pasta",
-            note: "Family favorite",
+            description: "Family favorite",
             ingredients: null,
             instructions: null,
             prep_time: "10 min",
@@ -59,7 +59,7 @@ describe("SupabaseRecipeGateway", () => {
         userId: 42,
         title: "Tomato Pasta",
         prepTime: "10 min",
-        note: "Family favorite",
+        description: "Family favorite",
         nutritionInfo: "100 kcal",
       },
     ]);
@@ -72,10 +72,10 @@ describe("SupabaseRecipeGateway", () => {
     expect(new URL(recipeRequest.url).searchParams.get("user_id")).toBe(
       "eq.42",
     );
-    expect(new URL(recipeRequest.url).searchParams.get("select")).not.toContain(
+    expect(new URL(recipeRequest.url).searchParams.get("select")).toContain(
       "description",
     );
-    expect(new URL(recipeRequest.url).searchParams.get("select")).toContain(
+    expect(new URL(recipeRequest.url).searchParams.get("select")).not.toContain(
       "note",
     );
   });
@@ -88,7 +88,7 @@ describe("SupabaseRecipeGateway", () => {
           recipe_id: 7,
           user_id: 42,
           title: "Tomato Pasta",
-          note: "A quick pasta dinner.",
+          description: "A quick pasta dinner.",
           ingredients: "Pasta\nTomatoes",
           instructions: "Boil pasta and add tomatoes.",
           prep_time: "10 min",
@@ -121,6 +121,7 @@ describe("SupabaseRecipeGateway", () => {
       title: "Tomato Pasta",
       mealType: "Dinner",
       course: "Entree",
+      description: "A quick pasta dinner.",
     });
 
     const profileRequest = new Request(
@@ -140,7 +141,7 @@ describe("SupabaseRecipeGateway", () => {
     expect(await recipeRequest.json()).toEqual({
       user_id: 42,
       title: "Tomato Pasta",
-      note: "A quick pasta dinner.",
+      description: "A quick pasta dinner.",
       ingredients: "Pasta\nTomatoes",
       instructions: "Boil pasta and add tomatoes.",
       prep_time: "10 min",

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import type { RecipeService } from "../../services/recipeService";
 import { RecipeSaveError } from "../../domain/repositories/RecipeApiRepository";
 import type { TempRecipe } from "../../domain/models/TempRecipe";
+import type { RecipeMetadataService } from "../../services/recipeMetadataService";
 
 const urlMessage =
   "Source URL must include a valid domain (such as example.com) or be empty.";
@@ -29,13 +30,32 @@ function normalizeSourceUrl(value: string): string | null {
   }
 }
 
+function isValidThumbnailUrl(value: string): boolean {
+  if (!value.trim()) return true;
+
+  try {
+    const url = new URL(value.trim());
+
+    return (
+      (url.protocol === "http:" || url.protocol === "https:") &&
+      /^[^.]+\..+/.test(url.hostname) &&
+      !url.hostname.endsWith(".")
+    );
+  } catch {
+    return false;
+  }
+}
+
+
 export default function ImportPage({
   recipeService,
+  recipeMetadataService,
   tempRecipe,
   saveRecipe,
   onSaved,
 }: {
   recipeService: RecipeService;
+  recipeMetadataService: RecipeMetadataService;
   tempRecipe?: TempRecipe;
   saveRecipe?: RecipeService["create"];
   onSaved?: () => void | Promise<void>;
@@ -43,11 +63,19 @@ export default function ImportPage({
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [checked, setChecked] = useState(false);
 
+  const [metadata, setMetadata] = useState<{
+    platform: string;
+    sourceUrl: string;
+  } | null>(null);
+  const [metadataLoading, setMetadataLoading] = useState(false);
+  const [metadataError, setMetadataError] = useState<string | null>(null);
+
   const [pending, setPending] = useState(false);
   const [saved, setSaved] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const submitting = useRef(false);
   const savedMessage = useRef<HTMLDivElement>(null);
+  const metadataRequestId = useRef(0);
 
   useEffect(() => {
     // Focusing also brings the confirmation into view after saving at the bottom.
@@ -88,11 +116,63 @@ export default function ImportPage({
       ) {
         nextErrors[field.name] = "Use 45 characters or fewer.";
       }
+      else if (
+        field.name === "thumbnailUrl" &&
+        field.value.trim() &&
+        !isValidThumbnailUrl(field.value)
+      ) {
+        nextErrors.thumbnailUrl = "Enter a valid HTTP or HTTPS thumbnail URL.";
+      }
     }
     setErrors(nextErrors);
     setChecked(true);
     fields.find((field) => nextErrors[field.name])?.focus();
     return Object.keys(nextErrors).length === 0;
+  }
+
+    async function checkMetadata(source: string) {
+      const requestId = ++metadataRequestId.current;
+      const normalizedUrl = normalizeSourceUrl(source.trim());
+
+    if (!source.trim()) {
+      setMetadata(null);
+      setMetadataError(null);
+      setMetadataLoading(false);
+      return;
+    }
+
+    if (!normalizedUrl) {
+      setMetadata(null);
+      setMetadataError(urlMessage);
+      setMetadataLoading(false);
+      return;
+    }
+
+    setMetadata(null);
+    setMetadataLoading(true);
+    setMetadataError(null);
+
+    try {
+      const result = await recipeMetadataService.getMetadata(normalizedUrl);
+
+      if (requestId !== metadataRequestId.current) return;
+
+      setMetadata({
+        platform: result.platform,
+        sourceUrl: result.sourceUrl,
+      });
+    } catch {
+      if (requestId !== metadataRequestId.current) return;
+
+      setMetadata(null);
+      setMetadataError(
+        "Unable to check this link. You can still enter the recipe manually.",
+      );
+    } finally {
+      if (requestId === metadataRequestId.current) {
+      setMetadataLoading(false);
+      }
+    }
   }
 
   async function save(form: HTMLFormElement) {
@@ -103,6 +183,11 @@ export default function ImportPage({
     const values = new FormData(form);
     const text = (name: string) => String(values.get(name) ?? "").trim();
     const sourceUrl = text("source");
+    const normalizedSourceUrl = sourceUrl
+      ? normalizeSourceUrl(sourceUrl)!
+      : "";
+    const matchingMetadata =
+      metadata?.sourceUrl === normalizedSourceUrl ? metadata : null;
     submitting.current = true;
     setPending(true);
     try {
@@ -117,9 +202,21 @@ export default function ImportPage({
         url: sourceUrl ? normalizeSourceUrl(sourceUrl)! : "",
         note: text("notes"),
         nutritionInfo: text("nutrition"),
+        description: text("description"),
+        sharedFromPlatform:
+          matchingMetadata?.platform ??
+          (normalizeSourceUrl(tempRecipe?.url ?? "") === normalizedSourceUrl
+            ? tempRecipe?.sharedFromPlatform
+            : "") ??
+          "",
+        thumbnailUrl: text("thumbnailUrl"),
       };
       await (saveRecipe ?? recipeService.create)(draft);
+      metadataRequestId.current++;
+      setMetadataLoading(false);
       form.reset();
+      setMetadata(null);
+      setMetadataError(null);
       setSaved(true);
       void onSaved?.();
     } catch (failure) {
@@ -212,10 +309,14 @@ export default function ImportPage({
           void save(event.currentTarget);
         }}
         onReset={() => {
+          metadataRequestId.current++;
+          setMetadataLoading(false);
           setErrors({});
           setChecked(false);
           setSaved(false);
           setSaveError(null);
+          setMetadata(null);
+          setMetadataError(null);
         }}
       >
         {saveError && (
@@ -245,10 +346,35 @@ export default function ImportPage({
             type="url"
             name="source"
             defaultValue={tempRecipe?.url ?? ""}
+            onChange={() => {
+              metadataRequestId.current++;
+              setMetadata(null);
+              setMetadataLoading(false);
+              setMetadataError(null);
+            }}
+            onBlur={(event) => {
+              void checkMetadata(event.currentTarget.value);
+            }}
             {...validationAttributes("source")}
           />
           {fieldError("source")}
         </label>
+        {metadataLoading && (
+          <p role="status">Checking source link…</p>
+        )}
+
+        {metadata?.platform && (
+          <p role="status">
+            Detected platform: <strong>{metadata.platform}</strong>
+          </p>
+        )}
+
+        {metadataError && (
+          <p className="editor-field-error" role="alert">
+            {metadataError}
+          </p>
+        )}
+        
         <label className="editor-field" style={fieldStyle}>
           <span id="title-label">
             Recipe Title <span className="field-hint">(Required)</span>
@@ -262,6 +388,42 @@ export default function ImportPage({
             required
           />
           {fieldError("title")}
+        </label>
+                <label className="editor-field" style={fieldStyle}>
+          <span>Description</span>
+          <textarea
+            name="description"
+            rows={3}
+            placeholder="Describe the recipe..."
+          />
+        </label>
+
+        <label className="editor-field" style={fieldStyle}>
+          <span id="thumbnailUrl-label">Thumbnail URL</span>
+          <input
+            type="url"
+            name="thumbnailUrl"
+            defaultValue={tempRecipe?.thumbnailUrl ?? ""}
+            placeholder="https://example.com/image.jpg"
+            onChange={(event) => {
+              const value = event.currentTarget.value;
+
+              setErrors((previous) => {
+                const next = { ...previous };
+
+                if (!value.trim() || isValidThumbnailUrl(value)) {
+                  delete next.thumbnailUrl;
+                } else {
+                  next.thumbnailUrl =
+                    "Enter a valid HTTP or HTTPS thumbnail URL.";
+                }
+
+                return next;
+              });
+            }}
+            {...validationAttributes("thumbnailUrl")}
+          />
+          {fieldError("thumbnailUrl")}
         </label>
         <div className="editor-field-row">
           <label className="editor-field" style={fieldStyle}>

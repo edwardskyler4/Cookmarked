@@ -14,7 +14,7 @@ type RecipeRow = {
   recipe_id: number;
   user_id: number;
   title: string;
-  note: string | null;
+  description: string | null;
   ingredients: string | null;
   instructions: string | null;
   prep_time: string | null;
@@ -36,7 +36,7 @@ function toRecipe(row: RecipeRow): Recipe {
     recipeId: row.recipe_id,
     userId: row.user_id,
     title: row.title,
-    note: row.note ?? undefined,
+    description: row.description ?? undefined,
     ingredients: row.ingredients ?? undefined,
     instructions: row.instructions ?? undefined,
     prepTime: row.prep_time ?? undefined,
@@ -76,7 +76,7 @@ export class SupabaseRecipeGateway implements RecipeCreator, RecipeReader {
     const { data, error } = await this.client
       .from("recipe")
       .select(
-        "recipe_id,user_id,title,note,ingredients,instructions,prep_time,cook_time,servings,meal_type,course,created_at,updated_at,shared_from_platform,url,media_type,thumbnail_url,nutrition_info",
+        "recipe_id,user_id,title,description,ingredients,instructions,prep_time,cook_time,servings,meal_type,course,created_at,updated_at,shared_from_platform,url,media_type,thumbnail_url,nutrition_info",
       )
       .eq("user_id", profile.user_id)
       .order("created_at", { ascending: false })
@@ -96,7 +96,7 @@ export class SupabaseRecipeGateway implements RecipeCreator, RecipeReader {
       .insert({
         user_id: profile.user_id,
         title: input.title,
-        note: input.note ?? input.description,
+        description: input.description ?? input.note,
         ingredients: input.ingredients,
         instructions: input.instructions,
         prep_time: input.prepTime,
@@ -111,7 +111,7 @@ export class SupabaseRecipeGateway implements RecipeCreator, RecipeReader {
         nutrition_info: input.nutritionInfo,
       })
       .select(
-        "recipe_id,user_id,title,note,ingredients,instructions,prep_time,cook_time,servings,meal_type,course,created_at,updated_at,shared_from_platform,url,media_type,thumbnail_url,nutrition_info",
+        "recipe_id,user_id,title,description,ingredients,instructions,prep_time,cook_time,servings,meal_type,course,created_at,updated_at,shared_from_platform,url,media_type,thumbnail_url,nutrition_info",
       )
       .single<RecipeRow>();
 

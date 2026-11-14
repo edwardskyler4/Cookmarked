@@ -33,6 +33,9 @@ describe("createRecipe", () => {
       ...input,
       mealType: "N/A",
       course: "N/A",
+      description: "",
+      sharedFromPlatform: "",
+      thumbnailUrl: "",
       userId: 42,
     });
   });
@@ -144,6 +147,52 @@ describe("createRecipe", () => {
       ).rejects.toMatchObject({ code: "invalid_input" });
     },
   );
+
+  it("allows an empty thumbnail URL", async () => {
+    const repo = repository();
+
+    await createRecipe(repo, "user", {
+      ...input,
+      thumbnailUrl: "",
+    });
+
+    expect(repo.insert).toHaveBeenCalled();
+  });
+
+  it.each([
+    "not-a-url",
+    "https://",
+    "javascript:alert(1)",
+    "ftp://example.com/image.jpg",
+  ])("rejects invalid thumbnail URL %s", async (thumbnailUrl) => {
+    const repo = repository();
+
+    await expect(
+      createRecipe(repo, "user", {
+        ...input,
+        thumbnailUrl,
+      }),
+    ).rejects.toMatchObject({
+      code: "invalid_input",
+      field: "thumbnailUrl",
+    });
+
+    expect(repo.insert).not.toHaveBeenCalled();
+  });
+
+  it("accepts a valid HTTPS thumbnail URL", async () => {
+    const repo = repository();
+
+    await createRecipe(repo, "user", {
+      ...input,
+      thumbnailUrl: "https://example.com/image.jpg",
+    });
+
+    expect(repo.insert.mock.calls[0][0].thumbnailUrl).toBe(
+      "https://example.com/image.jpg",
+    );
+  });
+
   it("rejects a missing profile without inserting", async () => {
     const repo = repository();
     repo.findProfileId.mockResolvedValue(null);

@@ -11,22 +11,35 @@ function extractTextUrl(text: string): string {
   const wrapper = text.slice(0, match.index).match(/[([{]+$/)?.[0];
   if (!wrapper) return url;
 
-  // Match the enclosing prose brackets while preserving brackets inside the URL.
-  const expectedClosings = [...wrapper].map((opening) => closingBrackets[opening]);
+  const expectedClosings = [...wrapper].map(
+    (opening) => closingBrackets[opening],
+  );
+
   for (let index = 0; index < url.length; index++) {
     const character = url[index];
+
     if (closingBrackets[character]) {
       expectedClosings.push(closingBrackets[character]);
-    } else if (character === expectedClosings[expectedClosings.length - 1]) {
+        } else if (character === expectedClosings[expectedClosings.length - 1]) {
+      const wasWrapperClosing = expectedClosings.length <= wrapper.length;
       expectedClosings.pop();
+
+      if (wasWrapperClosing && !/^[)\]}.,;!]*$/.test(url.slice(index + 1))) {
+        return url;
+      }
+
       if (expectedClosings.length === 0) {
-        // Extra URL content makes the apparent wrapper ambiguous; keep it intact.
-        return /^[.,;!]*$/.test(url.slice(index + 1))
-          ? url.slice(0, index - wrapper.length + 1)
-          : url;
+        const remaining = url.slice(index + 1);
+
+        if (/^[.,;!]*$/.test(remaining)) {
+          return url.slice(0, index - wrapper.length + 1);
+        }
+
+        return url;
       }
     }
   }
+
   return url;
 }
 
