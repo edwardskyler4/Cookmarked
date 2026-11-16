@@ -161,3 +161,54 @@ describe("recipes Edge Function entry point", () => {
     });
   });
 });
+
+describe("browser SDK CORS compatibility", () => {
+  it("allows every request header emitted by the installed browser SDK", async () => {
+    const fetch = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ recipeId: 7 }), {
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+    const browserClient = createClient(
+      "https://example.supabase.co",
+      "public-key",
+      {
+        global: { fetch },
+        auth: {
+          persistSession: false,
+          autoRefreshToken: false,
+          detectSessionInUrl: false,
+        },
+      },
+    );
+    await browserClient.functions.invoke("recipes_save", {
+      body: { title: "Soup" },
+    });
+    const sentHeaders = [
+      ...new Headers(fetch.mock.calls[0][1]?.headers).keys(),
+    ];
+    expect(sentHeaders).toContain("authorization");
+    const handler = createRecipeRequestHandler({
+      supabaseUrl: "https://example.supabase.co",
+      supabaseAnonKey: "public-key",
+      origins: ["https://app.example"],
+    });
+    const response = await handler(
+      new Request("https://example.test/recipes", {
+        method: "OPTIONS",
+        headers: {
+          Origin: "https://app.example",
+          "Access-Control-Request-Headers": sentHeaders.join(","),
+          "Access-Control-Request-Method": "POST",
+        },
+      }),
+    );
+    expect(response.status).toBe(204);
+    const allowedHeaders = response.headers
+      .get("Access-Control-Allow-Headers")!
+      .toLowerCase()
+      .split(",")
+      .map((value) => value.trim());
+    for (const header of sentHeaders) expect(allowedHeaders).toContain(header);
+  });
+});

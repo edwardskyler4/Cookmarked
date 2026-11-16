@@ -86,7 +86,7 @@ contain 3–32 letters, digits, or underscores, and map to
 changing it requires an account migration. Passwords require at least 8 characters.
 Registration signs the user in immediately. All app pages require a session;
 registration and login are the only public screens. Password recovery is handled
-manually by an administrator. The recipe library currently contains UI placeholders;
+manually by an administrator. The recipe library reads through the `recipes` Edge Function;
 the recipe-add form saves through the `recipes_save` Edge Function with owner-scoped RLS.
 The profile's `first_name` is an editable display name and is separate from the
 permanent username. Users continue to sign in with their original username; direct
@@ -139,11 +139,11 @@ calls Supabase directly. `AuthUser.id` is the Auth UUID; the existing numeric
 Using the Supabase CLI (requires project access):
 
 ```sh
-pnpm dlx supabase login
-pnpm dlx supabase link --project-ref YOUR_PROJECT_REF
-pnpm dlx supabase db push
-pnpm dlx supabase secrets set 'AUTH_ALLOWED_ORIGINS=http://localhost:5173,https://cookmarked.edw20009.workers.dev'
-pnpm dlx supabase functions deploy auth
+pnpm exec supabase login
+pnpm exec supabase link --project-ref YOUR_PROJECT_REF
+pnpm exec supabase db push
+pnpm exec supabase secrets set 'AUTH_ALLOWED_ORIGINS=http://localhost:5173,https://cookmarked.edw20009.workers.dev'
+SUPABASE_PROJECT_REF=YOUR_PROJECT_REF pnpm deploy:functions
 ```
 
 Configure settings/hooks through the dashboard separately; `db push` does not
@@ -187,6 +187,92 @@ uses Supabase's server-side Admin API `updateUserById` to change the password fo
 the Auth UUID. Privileged credentials belong only in the administrator's secure
 backend/tooling. Do not send recovery emails or change the internal identifier.
 
+## Validation and releases
+
+Use Node 24, pnpm 10.17.1, and [Deno 2.5.6](https://github.com/denoland/deno/releases/tag/v2.5.6)
+on your PATH. Database tests also require Bash and Docker. No Supabase credentials
+are needed for these local checks:
+
+```sh
+pnpm run check
+pnpm run test:db
+```
+
+`check` runs frontend TypeScript, Deno checks for every Edge Function with its own
+import map, lint, all Vitest tests, and the production build. Deno uses a frozen
+`supabase/functions/deno.lock`; keep its v4 format compatible with older Edge Runtime
+deployments when updating dependencies. See [Deno lockfiles](https://docs.deno.com/runtime/packages/)
+and [Supabase dependency configuration](https://supabase.com/docs/guides/functions/dependencies).
+The database suite starts a disposable PostgreSQL container without network access,
+applies migrations to the supplied hosted schema fixture, and tests ownership,
+conversion rollback, retries, and simultaneous conversion requests.
+
+`.github/workflows/check.yml` runs these checks on pull requests and pushes to main.
+Configure the workflow's `check` job as a required check in GitHub branch protection;
+adding the workflow alone does not prevent merging a failed check.
+
+### Schema changes for this repair
+
+The hosted definitions supplied on 2026-11-14 have `note` and `nutrition_info` but
+no `description`. `202611140001_recipe_description.sql` adds a separate nullable
+`description` column without renaming or overwriting existing content.
+`202611140002_atomic_recipe_conversion.sql` adds the owner-scoped receipt table and
+conversion RPC. Existing recipe and temporary-recipe ownership migrations must
+already be applied. `supabase/reference/ref_create_tables.sql` is a reference,
+not a migration runner; use the versioned migrations to update a database.
+
+### Rollout order
+
+Repository changes do not update deployed Supabase functions. The following rollout
+procedure changes hosted state and is separate from local implementation:
+
+1. Review pending migrations against the intended project, then apply the two new
+   migrations there. Database changes are never applied by the release scripts.
+2. Supply `AUTH_ALLOWED_ORIGINS` as exact origins without a trailing slash, including
+   `https://cookmarked.edw20009.workers.dev` and any local/preview origins you use.
+3. Run the guarded function release with an explicit target:
+
+   ```sh
+   SUPABASE_PROJECT_REF=YOUR_PROJECT_REF pnpm deploy:functions
+   ```
+
+   This runs `check` and `test:db`, then deploys every function directory containing
+   `index.ts`. Shared files are bundled separately into each endpoint, so deploying
+   only one consumer leaves the others unchanged. All functions use handler-owned
+   authentication (`verify_jwt = false`); recipe requests still require a user token
+   verified by Supabase Auth before accessing data. The credential endpoint
+   authenticates username/password instead.
+
+4. Run the read-only preflight check:
+
+   ```sh
+   pnpm check:cors https://YOUR_PROJECT_REF.supabase.co https://cookmarked.edw20009.workers.dev
+   ```
+
+   It sends unauthenticated OPTIONS requests only. It checks status, allowed origin,
+   methods, headers, and `Vary`, and reports failures such as `503 BOOT_ERROR`.
+
+5. Provide the Vite build-time environment variables, then run `pnpm deploy` to
+   validate and deploy the Cloudflare frontend.
+6. In an approved development project, verify manual saving, imported conversion,
+   retry after a lost response, and isolation between two accounts. A preflight
+   check does not verify database writes or authentication end to end.
+
+`pnpm deploy` releases the frontend; `pnpm deploy:functions` releases functions.
+Both stop when validation fails. Direct Wrangler/Supabase CLI deployments bypass
+these repository guards. A release can stop after some functions deploy; after
+correcting the failure, rerun the function release and repeat preflight checks.
+
+### Diagnosing a browser CORS error
+
+Check the OPTIONS status before changing allowed origins. A `503 BOOT_ERROR`
+means the function failed to start, so its CORS handler could not run. Inspect
+startup logs for syntax/import/configuration failures. A 403 for an unconfigured
+origin is an intentional rejection. With a valid origin, authentication and storage
+errors return CORS headers so the browser can read the actual 401/403/404/503.
+Unexpected failures log the operation and diagnostic name/code/status, never raw
+exception messages, bearer tokens, or recipe contents.
+
 ## Recipe creation
 
 The Add page saves manually entered recipes through the `recipes_save` Edge Function.
@@ -197,11 +283,11 @@ caller’s JWT so RLS applies; no service-role key is used.
 
 Title, prep time, serving size, ingredients, and directions remain required.
 Serving size must be an integer within PostgreSQL's integer range. Source URL must
-start with `https://` and be a valid URL, or be empty. Empty meal type and course
+be a valid HTTP(S) URL or be empty; a missing scheme is normalized to HTTPS. Empty meal type and course
 become `N/A` in the Edge Function. Notes map to `note`, nutrition maps to
 `nutrition_info`, directions map to `instructions`, and Source URL maps to `url`.
 A successful save clears the form and shows “Recipe saved”; a failed save retains
-its inputs. The library still displays placeholders.
+its inputs. The library reloads after a successful save.
 
 Before using this feature in a development project:
 
@@ -217,7 +303,7 @@ Before using this feature in a development project:
 
 ```sh
 pnpm exec supabase db push
-pnpm exec supabase functions deploy recipes_save
+SUPABASE_PROJECT_REF=YOUR_PROJECT_REF pnpm deploy:functions
 pnpm deploy
 ```
 
@@ -313,6 +399,7 @@ errors. Its share-flow checks covered the earlier Add-prefill behavior and need
 to be repeated for the current flow. Backend requests in the signed-in browser
 check were mocked; no production API calls or database writes were made. These
 results do not complete the physical-device checklist.
+
 ### Temporary recipe review
 
 The Import page can review rows from `public.temp_recipe`. Imported `text` is shown
@@ -320,13 +407,20 @@ as untrusted reference material; it is not automatically placed into ingredients
 directions, notes, or nutrition. The imported title and source URL are used as
 starting values, and the user copies any useful content into the normal recipe form.
 
-Saving a reviewed item uses the normal recipe-save function first. The temporary row
-is deleted only after the permanent recipe is created successfully. Apply
-`supabase/migrations/202611060001_temp_recipe_ownership.sql`, deploy the
-`temp_recipes` Edge Function, and rebuild the frontend:
+Saving a reviewed item sends one request to `recipes_save` with `tempRecipeId`.
+The Edge service validates the draft, resolves the authenticated profile, and calls
+`convert_temp_recipe` through its repository. The SQL function creates the permanent
+recipe, records a conversion receipt, and deletes the temporary row in one transaction.
+A failed write rolls back all three operations. Retrying the same temporary ID returns
+the first recipe, including when the original response was lost. Concurrent retries
+are serialized with a transaction advisory lock. The RPC is `security invoker` and
+uses the caller's JWT and RLS; it never uses a service-role key.
+
+Apply `202611060001_temp_recipe_ownership.sql` and the two `20261114` migrations,
+deploy all affected functions, and rebuild the frontend:
 
 ```sh
 pnpm exec supabase db push
-pnpm exec supabase functions deploy temp_recipes
+SUPABASE_PROJECT_REF=YOUR_PROJECT_REF pnpm deploy:functions
 pnpm deploy
 ```

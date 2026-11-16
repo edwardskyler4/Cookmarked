@@ -34,4 +34,5 @@ for migration in "$auth_repo_root"/supabase/migrations/*.sql; do
 done
 docker exec -i "$auth_test_name" psql -U postgres -v ON_ERROR_STOP=1 < "$auth_repo_root/supabase/tests/auth.sql"
 docker exec -i "$auth_test_name" psql -U postgres -v ON_ERROR_STOP=1 < "$auth_repo_root/supabase/tests/recipes.sql"
+bash "$auth_repo_root/supabase/tests/conversion-concurrency.sh" "$auth_test_name"
 echo 'Authentication and recipe database tests passed.'

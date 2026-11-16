@@ -3,14 +3,23 @@ import type {
   RecipeCreator,
   RecipeInput as LegacyRecipeInput,
 } from "../domain/Recipe.ts";
-import { 
-  RecipeError, 
-  type RecipeRepository, 
-  type RecipeInput 
+import {
+  RecipeError,
+  type RecipeRepository,
+  type RecipeConversionRepository,
+  type RecipeInput,
 } from "../domain/RecipeRepository.ts";
 
-export function createRecipe(creator: RecipeCreator, authUserId: string, input: LegacyRecipeInput): Promise<Recipe>;
-export function createRecipe(repository: RecipeRepository, authUserId: string, input: unknown): Promise<{ recipeId: number }>;
+export function createRecipe(
+  creator: RecipeCreator,
+  authUserId: string,
+  input: LegacyRecipeInput,
+): Promise<Recipe>;
+export function createRecipe(
+  repository: RecipeRepository,
+  authUserId: string,
+  input: unknown,
+): Promise<{ recipeId: number }>;
 export async function createRecipe(
   source: RecipeCreator | RecipeRepository,
   authUserId: string,
@@ -24,7 +33,8 @@ export async function createRecipe(
   const body = input as Record<string, unknown>;
   const text = (field: string, required = false, max?: number): string => {
     const value = body[field] ?? "";
-    if (typeof value !== "string") throw new RecipeError("invalid_input", field);
+    if (typeof value !== "string")
+      throw new RecipeError("invalid_input", field);
     const trimmed = value.trim();
     if ((required && !trimmed) || (max && trimmed.length > max))
       throw new RecipeError("invalid_input", field);
@@ -35,13 +45,26 @@ export async function createRecipe(
   const ingredients = text("ingredients", true);
   const instructions = text("instructions", true);
   const servings = body.servings;
-  if (typeof servings !== "number" || !Number.isInteger(servings) || servings < -2147483648 || servings > 2147483647)
+  if (
+    typeof servings !== "number" ||
+    !Number.isInteger(servings) ||
+    servings < -2147483648 ||
+    servings > 2147483647
+  )
     throw new RecipeError("invalid_input", "servings");
   const mealType = text("mealType") || "N/A";
   const course = text("course") || "N/A";
-  if (!["Breakfast", "Lunch", "Dinner", "Supper", "Snack", "N/A"].includes(mealType))
+  if (
+    !["Breakfast", "Lunch", "Dinner", "Supper", "Snack", "N/A"].includes(
+      mealType,
+    )
+  )
     throw new RecipeError("invalid_input", "mealType");
-  if (!["Dessert", "Entree", "Side", "Beverage", "Appetizer", "N/A"].includes(course))
+  if (
+    !["Dessert", "Entree", "Side", "Beverage", "Appetizer", "N/A"].includes(
+      course,
+    )
+  )
     throw new RecipeError("invalid_input", "course");
 
   const thumbnailUrl = text("thumbnailUrl");
@@ -101,4 +124,30 @@ export async function createRecipe(
     thumbnailUrl,
   };
   return source.insert(validated);
+}
+
+export async function convertTempRecipe(
+  repository: RecipeConversionRepository,
+  authUserId: string,
+  tempRecipeId: unknown,
+  input: unknown,
+): Promise<{ recipeId: number }> {
+  if (
+    typeof tempRecipeId !== "number" ||
+    !Number.isInteger(tempRecipeId) ||
+    tempRecipeId < 1 ||
+    tempRecipeId > 2147483647
+  ) {
+    throw new RecipeError("invalid_input", "tempRecipeId");
+  }
+  // Reuse the save validation and profile ownership resolution. The repository
+  // commits both writes and records the result as one idempotent transaction.
+  return createRecipe(
+    {
+      findProfileId: (id) => repository.findProfileId(id),
+      insert: (recipe) => repository.convert(tempRecipeId, recipe),
+    },
+    authUserId,
+    input,
+  );
 }

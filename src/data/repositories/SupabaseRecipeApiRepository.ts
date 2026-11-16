@@ -8,7 +8,20 @@ import {
 export class SupabaseRecipeApiRepository implements RecipeApiRepository {
   constructor(private readonly client: SupabaseClient) {}
 
-  async create(recipe: RecipeDraft): Promise<{ recipeId: number }> {
+  create(recipe: RecipeDraft): Promise<{ recipeId: number }> {
+    return this.save(recipe);
+  }
+
+  convert(
+    tempRecipeId: number,
+    recipe: RecipeDraft,
+  ): Promise<{ recipeId: number }> {
+    return this.save({ ...recipe, tempRecipeId });
+  }
+
+  private async save(
+    recipe: RecipeDraft & { tempRecipeId?: number },
+  ): Promise<{ recipeId: number }> {
     const { data, error } = await this.client.functions.invoke("recipes_save", {
       body: recipe,
     });

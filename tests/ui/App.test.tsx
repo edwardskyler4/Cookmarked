@@ -1,7 +1,14 @@
 // @vitest-environment jsdom
+import { fakeRecipeMetadataService } from "../fakes/recipeMetadataService";
 import { fakeRecipeService } from "../fakes/recipeService";
 
-import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  within,
+} from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import App from "../../src/App";
 import type { RecipeReader } from "../../src/domain/repositories/RecipeReader";
@@ -21,6 +28,7 @@ describe("Cookmarked home", () => {
     };
     render(
       <App
+        recipeMetadataService={fakeRecipeMetadataService()}
         authService={fakeAuthService().service}
         recipeReader={{ list: async () => [] }}
         recipeService={fakeRecipeService()}
@@ -69,6 +77,7 @@ describe("Cookmarked home", () => {
     };
     render(
       <App
+        recipeMetadataService={fakeRecipeMetadataService()}
         authService={fakeAuthService().service}
         recipeReader={recipeReader}
         recipeService={fakeRecipeService()}
@@ -84,7 +93,9 @@ describe("Cookmarked home", () => {
       "Directions (Required)",
     ]) {
       fireEvent.change(screen.getByLabelText(label), {
-        target: { value: label === "Recipe Title (Required)" ? "New recipe" : "details" },
+        target: {
+          value: label === "Recipe Title (Required)" ? "New recipe" : "details",
+        },
       });
     }
     fireEvent.change(screen.getByLabelText("Serving Size (Required)"), {
@@ -94,7 +105,9 @@ describe("Cookmarked home", () => {
     await screen.findByText("Recipe saved");
 
     fireEvent.click(screen.getByRole("button", { name: "Home" }));
-    expect(await screen.findByRole("heading", { name: "New recipe" })).toBeDefined();
+    expect(
+      await screen.findByRole("heading", { name: "New recipe" }),
+    ).toBeDefined();
     expect(loadCount).toBe(2);
   });
 
@@ -115,6 +128,7 @@ describe("Cookmarked home", () => {
     };
     render(
       <App
+        recipeMetadataService={fakeRecipeMetadataService()}
         authService={fakeAuthService().service}
         recipeReader={recipeReader}
         recipeService={fakeRecipeService()}
@@ -143,5 +157,76 @@ describe("Cookmarked home", () => {
         navigation.getByRole("button", { name }).getAttribute("aria-current"),
       ).toBeNull();
     }
+  });
+});
+
+describe("import conversion", () => {
+  it("retries the same atomic conversion after a lost response", async () => {
+    const service = fakeRecipeService();
+    service.convert
+      .mockRejectedValueOnce(new Error("response lost"))
+      .mockResolvedValueOnce({ recipeId: 9 });
+    const remove = vi.fn();
+    render(
+      <App
+        authService={fakeAuthService().service}
+        recipeMetadataService={fakeRecipeMetadataService()}
+        recipeService={service}
+        recipeReader={{ list: async () => [] }}
+        tempRecipeRepository={{
+          list: async () => [{ recipeId: 3, title: "Imported soup" }],
+          remove,
+        }}
+      />,
+    );
+    await screen.findByRole("searchbox");
+    fireEvent.click(screen.getByRole("button", { name: "Add" }));
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Imported soup" }),
+    );
+    for (const label of [
+      "Recipe Title (Required)",
+      "Prep Time (Required)",
+      "Ingredients (Required)",
+      "Directions (Required)",
+    ]) {
+      fireEvent.change(screen.getByLabelText(label), {
+        target: {
+          value:
+            label === "Recipe Title (Required)" ? "Imported soup" : "details",
+        },
+      });
+    }
+    fireEvent.change(screen.getByLabelText("Serving Size (Required)"), {
+      target: { value: "4" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    await screen.findByText("Unable to save recipe. Please try again.");
+    expect(
+      screen
+        .getByLabelText("Recipe Title (Required)")
+        .getAttribute("aria-invalid"),
+    ).toBeNull();
+    expect(
+      (screen.getByLabelText("Recipe Title (Required)") as HTMLInputElement)
+        .value,
+    ).toBe("Imported soup");
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    await screen.findByText("Recipe saved");
+    expect(service.convert).toHaveBeenNthCalledWith(
+      1,
+      3,
+      expect.objectContaining({ title: "Imported soup" }),
+    );
+    expect(service.convert).toHaveBeenNthCalledWith(
+      2,
+      3,
+      expect.objectContaining({ title: "Imported soup" }),
+    );
+    expect(service.create).not.toHaveBeenCalled();
+    expect(remove).not.toHaveBeenCalled();
+    expect(
+      await screen.findByText("No imported recipes waiting for review."),
+    ).toBeDefined();
   });
 });

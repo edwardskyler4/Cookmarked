@@ -1,3 +1,4 @@
+import { corsHeaders } from "./http.ts";
 import { AuthError, type AuthGateway } from "../domain/AuthGateway.ts";
 import { authenticate } from "../services/authenticate.ts";
 
@@ -7,22 +8,12 @@ export async function handleAuth(
   origins: string[],
 ): Promise<Response> {
   const origin = request.headers.get("Origin");
-  const headers = new Headers({
-    "Content-Type": "application/json",
-    "Cache-Control": "no-store",
-    Vary: "Origin",
-  });
+  const headers = corsHeaders(request, origins, "POST, OPTIONS");
   if (origin && !origins.includes(origin))
     return new Response(JSON.stringify({ code: "invalid_input" }), {
       status: 403,
       headers,
     });
-  if (origin) headers.set("Access-Control-Allow-Origin", origin);
-  headers.set(
-    "Access-Control-Allow-Headers",
-    "authorization, apikey, content-type, x-client-info",
-  );
-  headers.set("Access-Control-Allow-Methods", "POST, OPTIONS");
   if (request.method === "OPTIONS")
     return new Response(null, { status: 204, headers });
   if (request.method !== "POST")

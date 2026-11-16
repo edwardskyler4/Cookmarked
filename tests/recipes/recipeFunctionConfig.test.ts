@@ -11,3 +11,26 @@ describe("recipes Edge Function configuration", () => {
     );
   });
 });
+
+describe("handler-owned authentication configuration", () => {
+  it.each([
+    "auth",
+    "recipes",
+    "recipes_save",
+    "temp_recipes",
+    "recipe_metadata",
+  ])("lets %s return CORS responses before authentication", async (name) => {
+    const config = await readFile("supabase/config.toml", "utf8");
+    const section = config.split(`[functions.${name}]`)[1]?.split("[")[0] ?? "";
+    expect(section).toMatch(/^verify_jwt\s*=\s*false/m);
+  });
+});
+
+describe("Edge Runtime dependency compatibility", () => {
+  it("keeps a v4 dependency lock readable by older Edge Runtime deployments", async () => {
+    const lock = JSON.parse(
+      await readFile("supabase/functions/deno.lock", "utf8"),
+    );
+    expect(lock.version).toBe("4");
+  });
+});

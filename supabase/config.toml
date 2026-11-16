@@ -9,9 +9,9 @@ password_requirements = "lower_upper_letters_digits_symbols"
 [functions.auth]
 verify_jwt = false
 
-# Recipe operations require a valid Supabase Auth JWT.
+# Recipe handlers validate the bearer JWT with Auth, after handling CORS.
 [functions.recipes]
-verify_jwt = true
+verify_jwt = false
 
 # The handler validates the bearer JWT with Auth before any database operation.
 [functions.recipes_save]
@@ -19,4 +19,8 @@ verify_jwt = false
 
 # Metadata requests validate the bearer JWT inside the handler.
 [functions.recipe_metadata]
+verify_jwt = false
+
+# Temporary recipe operations use the same handler-owned token verification.
+[functions.temp_recipes]
 verify_jwt = false

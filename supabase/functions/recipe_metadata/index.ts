@@ -1,8 +1,7 @@
+import { handleHttpRequest, jsonResponse } from "../_shared/ui/http.ts";
+import { verifyUser } from "../_shared/data/verifyUser.ts";
 
-import {
-  createClient,
-  type SupabaseClient,
-} from "@supabase/supabase-js";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 import type { RecipeMetadata } from "../_shared/domain/RecipeMetadata.ts";
 
@@ -21,27 +20,9 @@ type MetadataFunctionConfig = {
   createClient?: ClientFactory;
 };
 
-function jsonResponse(
-  status: number,
-  body: Record<string, unknown>,
-  headers?: Headers,
-): Response {
-  const responseHeaders = new Headers(headers);
-
-  responseHeaders.set("Content-Type", "application/json");
-  responseHeaders.set("Cache-Control", "no-store");
-
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: responseHeaders,
-  });
-}
-
-function unauthorizedResponse(headers?: Headers): Response {
+function unauthorizedResponse(headers: Headers): Response {
   return jsonResponse(401, { code: "unauthorized" }, headers);
 }
-
-
 
 function validateSourceUrl(value: unknown): URL | null {
   if (typeof value !== "string" || value.length > 2048) {
@@ -90,40 +71,26 @@ function validateSourceUrl(value: unknown): URL | null {
   return url;
 }
 
-
-
-function detectPlatform(
-  url: URL,
-): RecipeMetadata["platform"] | null {
+function detectPlatform(url: URL): RecipeMetadata["platform"] | null {
   const hostname = url.hostname.toLowerCase();
 
   const matchesDomain = (domain: string) =>
     hostname === domain || hostname.endsWith(`.${domain}`);
 
-  if (
-    matchesDomain("instagram.com") ||
-    matchesDomain("instagr.am")
-  ) {
+  if (matchesDomain("instagram.com") || matchesDomain("instagr.am")) {
     return "Instagram";
   }
 
-  if (
-    matchesDomain("facebook.com") ||
-    matchesDomain("fb.watch")
-  ) {
+  if (matchesDomain("facebook.com") || matchesDomain("fb.watch")) {
     return "Facebook";
   }
 
-  if (
-    matchesDomain("pinterest.com") ||
-    matchesDomain("pin.it")
-  ) {
+  if (matchesDomain("pinterest.com") || matchesDomain("pin.it")) {
     return "Pinterest";
   }
 
   return null;
 }
-
 
 export function createMetadataRequestHandler({
   supabaseUrl,
@@ -131,102 +98,76 @@ export function createMetadataRequestHandler({
   origins,
   createClient: makeClient = createClient,
 }: MetadataFunctionConfig): (request: Request) => Promise<Response> {
-  return async (request: Request) => {
-    const origin = request.headers.get("Origin");
+  return (request: Request) =>
+    handleHttpRequest(request, origins, "POST, OPTIONS", async (headers) => {
+      if (request.method !== "POST") {
+        return jsonResponse(405, { code: "method_not_allowed" }, headers);
+      }
 
-    const headers = new Headers({
-      "Cache-Control": "no-store",
-      Vary: "Origin",
-      "Access-Control-Allow-Headers":
-        "authorization, apikey, content-type, x-client-info",
-      "Access-Control-Allow-Methods": "POST, OPTIONS",
-    });
+      const authorization = request.headers.get("Authorization");
+      const token = authorization?.match(/^Bearer\s+(\S+)$/i)?.[1];
 
-    if (origin && !origins.includes(origin)) {
-      return new Response(
-        JSON.stringify({ code: "invalid_input" }),
-        { status: 403, headers },
-      );
-    }
+      if (!token || !authorization) {
+        return unauthorizedResponse(headers);
+      }
 
-    if (origin) {
-      headers.set("Access-Control-Allow-Origin", origin);
-    }
+      const client = makeClient(supabaseUrl, supabaseAnonKey, {
+        auth: {
+          persistSession: false,
+          autoRefreshToken: false,
+          detectSessionInUrl: false,
+        },
+        global: {
+          headers: { Authorization: authorization },
+        },
+      });
 
-    if (request.method === "OPTIONS") {
-      return new Response(null, { status: 204, headers });
-    }
+      const userId = await verifyUser(client, token);
 
-    if (request.method !== "POST") {
-      return jsonResponse(405, { code: "method_not_allowed" }, headers);
-    }
+      if (!userId) {
+        return unauthorizedResponse(headers);
+      }
 
-    const authorization = request.headers.get("Authorization");
-    const token = authorization?.match(/^Bearer\s+(\S+)$/i)?.[1];
+      let body: unknown;
 
-    if (!token || !authorization) {
-      return unauthorizedResponse(headers);
-    }
+      try {
+        body = await request.json();
+      } catch {
+        return jsonResponse(400, { code: "invalid_json" }, headers);
+      }
 
-    const client = makeClient(supabaseUrl, supabaseAnonKey, {
-      auth: {
-        persistSession: false,
-        autoRefreshToken: false,
-        detectSessionInUrl: false,
-      },
-      global: {
-        headers: { Authorization: authorization },
-      },
-    });
+      if (typeof body !== "object" || body === null || !("url" in body)) {
+        return jsonResponse(400, { code: "missing_url" }, headers);
+      }
 
-    const { data, error } = await client.auth.getUser(token);
+      const sourceUrl = validateSourceUrl(body.url);
 
-    if (error || !data.user) {
-      return unauthorizedResponse(headers);
-    }
-
-    
-    let body: unknown;
-
-    try {
-    body = await request.json();
-    } catch {
-    return jsonResponse(400, { code: "invalid_json" }, headers);
-    }
-
-    if (
-        typeof body !== "object" ||
-        body === null ||
-        !("url" in body)
-    ) {
-    return jsonResponse(400, { code: "missing_url" }, headers);
-    }
-
-    const sourceUrl = validateSourceUrl(body.url);
-
-    if (!sourceUrl) {
+      if (!sourceUrl) {
         return jsonResponse(400, { code: "invalid_source_url" }, headers);
-    }
+      }
 
-    const platform = detectPlatform(sourceUrl);
+      const platform = detectPlatform(sourceUrl);
 
-if (!platform) {
-  return jsonResponse(400, {
-    code: "unsupported_platform",
-  }, headers);
-}
+      if (!platform) {
+        return jsonResponse(
+          400,
+          {
+            code: "unsupported_platform",
+          },
+          headers,
+        );
+      }
 
-const metadata: RecipeMetadata = {
-  title: null,
-  description: null,
-  thumbnailUrl: null,
-  platform,
-  sourceUrl: sourceUrl.href,
-};
+      const metadata: RecipeMetadata = {
+        title: null,
+        description: null,
+        thumbnailUrl: null,
+        platform,
+        sourceUrl: sourceUrl.href,
+      };
 
-return jsonResponse(200, metadata, headers);
-
-  };
+      return jsonResponse(200, metadata, headers);
+    });
 }
 if (typeof Deno !== "undefined") {
   const origins = (Deno.env.get("AUTH_ALLOWED_ORIGINS") ?? "")
@@ -242,4 +183,3 @@ if (typeof Deno !== "undefined") {
     }),
   );
 }
-

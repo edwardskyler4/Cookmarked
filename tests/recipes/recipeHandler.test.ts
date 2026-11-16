@@ -205,10 +205,77 @@ describe("recipe handler", () => {
 
     expect(response.status).toBe(503);
     expect(await response.json()).toEqual({ code: "unavailable" });
-    expect(errorSpy).toHaveBeenCalledWith(
-      "Unable to list recipes",
-      failure,
-    );
+    expect(errorSpy).toHaveBeenCalledWith("Unable to list recipes", {
+      name: "Error",
+    });
     errorSpy.mockRestore();
+  });
+});
+
+describe("recipe conversion HTTP contract", () => {
+  it("uses atomic conversion when the request identifies a temporary recipe", async () => {
+    const repo = {
+      ...repository(),
+      convert: vi.fn().mockResolvedValue({ recipeId: 9 }),
+    };
+    const response = await handleRecipe(
+      request(JSON.stringify({ ...recipeInput, tempRecipeId: 3 })),
+      repo,
+      async () => "user",
+      [origin],
+    );
+    expect(response.status).toBe(201);
+    expect(await response.json()).toEqual({ recipeId: 9 });
+    expect(repo.convert).toHaveBeenCalledWith(
+      3,
+      expect.objectContaining({ userId: 42 }),
+    );
+    expect(repo.insert).not.toHaveBeenCalled();
+  });
+
+  it("returns a CORS-readable 404 for a missing temporary recipe", async () => {
+    const { RecipeError } =
+      await import("../../supabase/functions/_shared/domain/RecipeRepository");
+    const repo = {
+      ...repository(),
+      convert: vi
+        .fn()
+        .mockRejectedValue(new RecipeError("temp_recipe_not_found")),
+    };
+    const response = await handleRecipe(
+      request(JSON.stringify({ ...recipeInput, tempRecipeId: 3 })),
+      repo,
+      async () => "user",
+      [origin],
+    );
+    expect(response.status).toBe(404);
+    expect(response.headers.get("Access-Control-Allow-Origin")).toBe(origin);
+  });
+});
+
+describe("safe recipe diagnostics", () => {
+  it("logs storage categories without logging sensitive error messages", async () => {
+    const log = vi.spyOn(console, "error").mockImplementation(() => {});
+    try {
+      const repo = repository();
+      repo.insert.mockRejectedValue(
+        Object.assign(new Error("sensitive recipe text or bearer token"), {
+          code: "23514",
+        }),
+      );
+      const response = await handleRecipe(request(), repo, async () => "user", [
+        origin,
+      ]);
+      expect(response.status).toBe(503);
+      expect(log).toHaveBeenCalledWith("Unable to save recipe", {
+        name: "Error",
+        code: "23514",
+      });
+      expect(JSON.stringify(log.mock.calls)).not.toContain(
+        "sensitive recipe text or bearer token",
+      );
+    } finally {
+      log.mockRestore();
+    }
   });
 });

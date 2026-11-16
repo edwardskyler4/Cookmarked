@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { fakeRecipeMetadataService } from "../fakes/recipeMetadataService";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import App from "../../src/App";
@@ -29,7 +30,11 @@ function renderApp(
   recipeService = fakeRecipeService(),
 ) {
   return render(
-    <App authService={authService} recipeService={recipeService} />,
+    <App
+      recipeMetadataService={fakeRecipeMetadataService()}
+      authService={authService}
+      recipeService={recipeService}
+    />,
   );
 }
 
