@@ -20,3 +20,6 @@ verify_jwt = false
 # Metadata requests validate the bearer JWT inside the handler.
 [functions.recipe_metadata]
 verify_jwt = false
+
+[functions.capture]
+verify_jwt = false

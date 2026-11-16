@@ -3,6 +3,7 @@ import type {
   TempRecipe,
   TempRecipeRepository,
 } from "../domain/TempRecipeRepository.ts";
+import type { Capture, CaptureRepository, NewCapture } from "../domain/Capture.ts";
 
 type TempRecipeRow = {
   recipe_id: number;
@@ -14,7 +15,7 @@ type TempRecipeRow = {
   thumbnail_url: string | null;
 };
 
-export class SupabaseTempRecipeRepository implements TempRecipeRepository {
+export class SupabaseTempRecipeRepository implements TempRecipeRepository, CaptureRepository {
   constructor(private readonly client: SupabaseClient) {}
 
   private async profileId(authUserId: string): Promise<number> {
@@ -54,5 +55,57 @@ export class SupabaseTempRecipeRepository implements TempRecipeRepository {
       .eq("recipe_id", recipeId)
       .eq("user_id", userId);
     if (error) throw error;
+  }
+
+  async findByCanonicalUrl(authUserId: string, canonicalUrl: string): Promise<Capture | null> {
+    const userId = await this.profileId(authUserId);
+    const { data, error } = await this.client
+      .from("temp_recipe")
+      .select("recipe_id,title,text,shared_from_platform,url,media_type,thumbnail_url")
+      .eq("user_id", userId)
+      .eq("url", canonicalUrl)
+      .maybeSingle();
+    if (error) throw error;
+    if (!data) return null;
+    const row = data as TempRecipeRow;
+    return {
+      captureId: row.recipe_id,
+      authUserId,
+      canonicalUrl,
+      platform: row.shared_from_platform as Capture["platform"],
+      title: row.title,
+      description: row.text ?? undefined,
+      thumbnailUrl: row.thumbnail_url ?? undefined,
+      mediaType: row.media_type ?? undefined,
+    };
+  }
+
+  async save(capture: NewCapture): Promise<Capture> {
+    const userId = await this.profileId(capture.authUserId);
+    const { data, error } = await this.client
+      .from("temp_recipe")
+      .insert({
+        user_id: userId,
+        title: capture.title,
+        text: capture.description ?? null,
+        shared_from_platform: capture.platform,
+        url: capture.canonicalUrl,
+        media_type: capture.mediaType ?? null,
+        thumbnail_url: capture.thumbnailUrl ?? null,
+      })
+      .select("recipe_id,title,text,shared_from_platform,url,media_type,thumbnail_url")
+      .single();
+    if (error || !data) throw error ?? new Error("Unable to save capture");
+    const row = data as TempRecipeRow;
+    return {
+      captureId: row.recipe_id,
+      authUserId: capture.authUserId,
+      canonicalUrl: row.url ?? capture.canonicalUrl,
+      platform: capture.platform,
+      title: row.title,
+      description: row.text ?? undefined,
+      thumbnailUrl: row.thumbnail_url ?? undefined,
+      mediaType: row.media_type ?? undefined,
+    };
   }
 }

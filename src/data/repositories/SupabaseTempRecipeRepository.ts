@@ -22,4 +22,22 @@ export class SupabaseTempRecipeRepository implements TempRecipeRepository {
     if (error)
       throw new Error(`Unable to remove temporary recipe: ${error.message}`);
   }
+
+  async capture(url: string): Promise<TempRecipe> {
+    const { data, error } = await this.client.functions.invoke("capture", {
+      body: { url },
+    });
+    if (error || !data?.capture)
+      throw new Error(`Unable to capture recipe: ${error?.message ?? "unknown error"}`);
+    const capture = data.capture;
+    return {
+      recipeId: capture.captureId,
+      title: capture.title,
+      text: capture.description,
+      sharedFromPlatform: capture.platform,
+      url: capture.canonicalUrl,
+      mediaType: capture.mediaType,
+      thumbnailUrl: capture.thumbnailUrl,
+    };
+  }
 }

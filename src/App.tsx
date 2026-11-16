@@ -91,7 +91,7 @@ function SignedInApp({
   onSaveDarkMode: (darkMode: boolean) => void;
   recipeReader: RecipeReader;
   tempRecipeRepository?: TempRecipeRepository;
-  onImportUrl: (url: string) => void | Promise<void>;
+  onImportUrl?: (url: string) => void | Promise<void>;
 }) {
   const [page, setPage] = useState<Page>("home");
   const [recipes, setRecipes] = useState<Recipe[]>([]);
@@ -116,21 +116,36 @@ function SignedInApp({
     void reloadRecipes();
   }, [reloadRecipes]);
 
+  const reloadTempRecipes = useCallback(async () => {
+    if (!tempRecipeRepository) return;
+    try {
+      setTempRecipes(await tempRecipeRepository.list());
+    } catch {
+      setTempRecipes([]);
+    }
+  }, [tempRecipeRepository]);
+
   useEffect(() => {
     let active = true;
     if (!tempRecipeRepository) return;
-    tempRecipeRepository
-      .list()
-      .then((nextTempRecipes) => {
-        if (active) setTempRecipes(nextTempRecipes);
-      })
-      .catch(() => {
-        if (active) setTempRecipes([]);
-      });
+    void tempRecipeRepository.list().then((nextTempRecipes) => {
+      if (active) setTempRecipes(nextTempRecipes);
+    }).catch(() => {
+      if (active) setTempRecipes([]);
+    });
     return () => {
       active = false;
     };
   }, [tempRecipeRepository]);
+
+  async function importUrl(url: string) {
+    if (onImportUrl) {
+      await onImportUrl(url);
+    } else {
+      await tempRecipeRepository?.capture?.(url);
+    }
+    await reloadTempRecipes();
+  }
   const [displayName, setDisplayName] = useState("");
 
   useEffect(() => {
@@ -271,7 +286,7 @@ function SignedInApp({
                           trimmedUrl,
                           "Planned action: create a temporary recipe for review.",
                         );
-                        void onImportUrl(trimmedUrl);
+                        void importUrl(trimmedUrl);
                       }
                     }}
                   >
@@ -358,7 +373,7 @@ export default function App({
   recipeMetadataService,
   recipeReader = emptyRecipeReader,
   tempRecipeRepository,
-  onImportUrl = () => {},
+  onImportUrl,
 }: {
   authService: AuthService;
   profileService?: ProfileService;

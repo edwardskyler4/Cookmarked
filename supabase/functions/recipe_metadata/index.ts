@@ -5,6 +5,11 @@ import {
 } from "@supabase/supabase-js";
 
 import type { RecipeMetadata } from "../_shared/domain/RecipeMetadata.ts";
+import type {
+  CaptureMetadata,
+  CaptureMetadataProvider,
+} from "../_shared/domain/Capture.ts";
+import { createHttpMetadataProvider } from "../_shared/services/metadataProvider.ts";
 
 type ClientOptions = Parameters<typeof createClient>[2];
 
@@ -19,6 +24,7 @@ type MetadataFunctionConfig = {
   supabaseAnonKey: string;
   origins: string[];
   createClient?: ClientFactory;
+  metadataProvider?: CaptureMetadataProvider;
 };
 
 function jsonResponse(
@@ -130,6 +136,7 @@ export function createMetadataRequestHandler({
   supabaseAnonKey,
   origins,
   createClient: makeClient = createClient,
+  metadataProvider,
 }: MetadataFunctionConfig): (request: Request) => Promise<Response> {
   return async (request: Request) => {
     const origin = request.headers.get("Origin");
@@ -216,10 +223,16 @@ if (!platform) {
   }, headers);
 }
 
+let found: CaptureMetadata | null = null;
+try {
+  found = metadataProvider ? await metadataProvider.fetch(sourceUrl.href) : null;
+} catch {
+  found = null;
+}
 const metadata: RecipeMetadata = {
-  title: null,
-  description: null,
-  thumbnailUrl: null,
+  title: found?.title ?? null,
+  description: found?.description ?? null,
+  thumbnailUrl: found?.thumbnailUrl ?? null,
   platform,
   sourceUrl: sourceUrl.href,
 };
@@ -239,6 +252,7 @@ if (typeof Deno !== "undefined") {
       supabaseUrl: Deno.env.get("SUPABASE_URL")!,
       supabaseAnonKey: Deno.env.get("SUPABASE_ANON_KEY")!,
       origins,
+      metadataProvider: createHttpMetadataProvider(),
     }),
   );
 }
