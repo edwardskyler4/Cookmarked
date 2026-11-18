@@ -16,6 +16,15 @@ type CaptureHandlerConfig = {
   verifyToken: TokenVerifier;
 };
 
+function errorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  if (typeof error === "object" && error !== null && "message" in error) {
+    const message = (error as { message?: unknown }).message;
+    if (typeof message === "string" && message.trim()) return message;
+  }
+  return "unavailable";
+}
+
 function response(status: number, body: unknown, origin: string | null, origins: string[]) {
   const headers = new Headers({
     "Content-Type": "application/json",
@@ -55,7 +64,8 @@ export function createCaptureRequestHandler(config: CaptureHandlerConfig) {
       );
       return response(result.duplicate ? 200 : 201, result, origin, config.origins);
     } catch (error) {
-      const code = error instanceof Error ? error.message : "unavailable";
+      console.error("Capture failed", error);
+      const code = errorMessage(error);
       const status = code === "invalid_url" || code === "unsupported_host" ? 400 : 503;
       return response(status, { code }, origin, config.origins);
     }
@@ -65,18 +75,30 @@ export function createCaptureRequestHandler(config: CaptureHandlerConfig) {
 if (typeof Deno !== "undefined") {
   const origins = (Deno.env.get("AUTH_ALLOWED_ORIGINS") ?? "")
     .split(",").map((value) => value.trim()).filter(Boolean);
-  const client = createClient(
-    Deno.env.get("SUPABASE_URL")!,
-    Deno.env.get("SUPABASE_ANON_KEY")!,
-    { global: { headers: { Authorization: "" } }, auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false } },
-  );
-  Deno.serve(createCaptureRequestHandler({
-    origins,
-    repository: new SupabaseTempRecipeRepository(client),
-    metadataProvider: createHttpMetadataProvider(),
-    verifyToken: async (token) => {
-      const { data, error } = await client.auth.getUser(token);
-      return error ? null : data.user?.id ?? null;
-    },
-  }));
+  Deno.serve((request) => {
+    // Database queries must carry the caller's JWT so profile lookup and RLS
+    // evaluate as the authenticated user, not as anon.
+    const authorization = request.headers.get("Authorization") ?? "";
+    const client = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_ANON_KEY")!,
+      {
+        global: { headers: { Authorization: authorization } },
+        auth: {
+          persistSession: false,
+          autoRefreshToken: false,
+          detectSessionInUrl: false,
+        },
+      },
+    );
+    return createCaptureRequestHandler({
+      origins,
+      repository: new SupabaseTempRecipeRepository(client),
+      metadataProvider: createHttpMetadataProvider(),
+      verifyToken: async (token) => {
+        const { data, error } = await client.auth.getUser(token);
+        return error ? null : data.user?.id ?? null;
+      },
+    })(request);
+  });
 }

@@ -48,4 +48,56 @@ describe("SupabaseTempRecipeRepository", () => {
       body: { recipeId: 3 },
     });
   });
+
+  it("captures a URL through the capture function and maps the inbox item", async () => {
+    const invoke = vi.fn().mockResolvedValue({
+      data: {
+        duplicate: false,
+        capture: {
+          captureId: 8,
+          title: "Imported pasta",
+          description: "A quick dinner",
+          platform: "Instagram",
+          canonicalUrl: "https://www.instagram.com/p/ABC123/",
+          thumbnailUrl: "https://cdn.example.com/pasta.jpg",
+        },
+      },
+      error: null,
+    });
+    const repository = new SupabaseTempRecipeRepository({
+      functions: { invoke },
+    } as never);
+
+    await expect(repository.capture("https://www.instagram.com/p/ABC123/")).resolves.toEqual({
+      recipeId: 8,
+      title: "Imported pasta",
+      text: "A quick dinner",
+      sharedFromPlatform: "Instagram",
+      url: "https://www.instagram.com/p/ABC123/",
+      thumbnailUrl: "https://cdn.example.com/pasta.jpg",
+      mediaType: undefined,
+    });
+    expect(invoke).toHaveBeenCalledWith("capture", {
+      body: { url: "https://www.instagram.com/p/ABC123/" },
+    });
+  });
+
+  it("includes the Edge Function error code when capture fails", async () => {
+    const invoke = vi.fn().mockResolvedValue({
+      data: null,
+      error: Object.assign(new Error("Edge Function returned a non-2xx status code"), {
+        context: new Response(JSON.stringify({ code: "profile_not_found" }), {
+          status: 503,
+          headers: { "Content-Type": "application/json" },
+        }),
+      }),
+    });
+    const repository = new SupabaseTempRecipeRepository({
+      functions: { invoke },
+    } as never);
+
+    await expect(repository.capture("https://www.instagram.com/p/ABC123/")).rejects.toThrow(
+      "Unable to capture recipe: Edge Function returned a non-2xx status code (profile_not_found)",
+    );
+  });
 });

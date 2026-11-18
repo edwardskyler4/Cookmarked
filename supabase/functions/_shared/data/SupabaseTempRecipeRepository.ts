@@ -24,7 +24,8 @@ export class SupabaseTempRecipeRepository implements TempRecipeRepository, Captu
       .select("user_id")
       .eq("auth_user_id", authUserId)
       .single();
-    if (error || !data) throw error ?? new Error("Profile not found");
+    if (error || !data)
+      throw new Error(`profile_lookup_failed: ${error?.message ?? "Profile not found"}`);
     return data.user_id;
   }
 
@@ -35,7 +36,7 @@ export class SupabaseTempRecipeRepository implements TempRecipeRepository, Captu
       .select("recipe_id,title,text,shared_from_platform,url,media_type,thumbnail_url")
       .eq("user_id", userId)
       .order("created_at", { ascending: false });
-    if (error) throw error;
+    if (error) throw new Error(`temp_recipe_list_failed: ${error.message}`);
     return (data as TempRecipeRow[]).map((row) => ({
       recipeId: row.recipe_id,
       title: row.title,
@@ -54,7 +55,7 @@ export class SupabaseTempRecipeRepository implements TempRecipeRepository, Captu
       .delete()
       .eq("recipe_id", recipeId)
       .eq("user_id", userId);
-    if (error) throw error;
+    if (error) throw new Error(`temp_recipe_delete_failed: ${error.message}`);
   }
 
   async findByCanonicalUrl(authUserId: string, canonicalUrl: string): Promise<Capture | null> {
@@ -65,7 +66,7 @@ export class SupabaseTempRecipeRepository implements TempRecipeRepository, Captu
       .eq("user_id", userId)
       .eq("url", canonicalUrl)
       .maybeSingle();
-    if (error) throw error;
+    if (error) throw new Error(`capture_duplicate_lookup_failed: ${error.message}`);
     if (!data) return null;
     const row = data as TempRecipeRow;
     return {
@@ -95,7 +96,8 @@ export class SupabaseTempRecipeRepository implements TempRecipeRepository, Captu
       })
       .select("recipe_id,title,text,shared_from_platform,url,media_type,thumbnail_url")
       .single();
-    if (error || !data) throw error ?? new Error("Unable to save capture");
+    if (error || !data)
+      throw new Error(`capture_insert_failed: ${error?.message ?? "Unable to save capture"}`);
     const row = data as TempRecipeRow;
     return {
       captureId: row.recipe_id,

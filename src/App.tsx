@@ -99,6 +99,8 @@ function SignedInApp({
   const [recipesError, setRecipesError] = useState<string | null>(null);
   const [tempRecipes, setTempRecipes] = useState<TempRecipe[]>([]);
   const [selectedTempRecipeId, setSelectedTempRecipeId] = useState<number | null>(null);
+  const [importPending, setImportPending] = useState(false);
+  const [importError, setImportError] = useState<string | null>(null);
 
   const reloadRecipes = useCallback(async () => {
     setRecipesLoading(true);
@@ -139,12 +141,26 @@ function SignedInApp({
   }, [tempRecipeRepository]);
 
   async function importUrl(url: string) {
-    if (onImportUrl) {
-      await onImportUrl(url);
-    } else {
-      await tempRecipeRepository?.capture?.(url);
+    setImportPending(true);
+    setImportError(null);
+    try {
+      if (onImportUrl) {
+        await onImportUrl(url);
+      } else if (tempRecipeRepository?.capture) {
+        await tempRecipeRepository.capture(url);
+      } else {
+        throw new Error("Import is not available.");
+      }
+      await reloadTempRecipes();
+    } catch (error) {
+      setImportError(
+        error instanceof Error
+          ? error.message
+          : "Unable to import that link. Check the URL and try again.",
+      );
+    } finally {
+      setImportPending(false);
     }
-    await reloadTempRecipes();
   }
   const [displayName, setDisplayName] = useState("");
 
@@ -290,6 +306,10 @@ function SignedInApp({
                       }
                     }}
                   >
+                    {importError && <p role="alert">{importError}</p>}
+                    {importPending && (
+                      <p role="status">Importing link...</p>
+                    )}
                     <label className="editor-field">
                       <span>Recipe URL</span>
                       <input
@@ -299,8 +319,12 @@ function SignedInApp({
                         required
                       />
                     </label>
-                    <button className="filter-chip active" type="submit">
-                      Import URL
+                    <button
+                      className="filter-chip active"
+                      type="submit"
+                      disabled={importPending}
+                    >
+                      {importPending ? "Importing..." : "Import URL"}
                     </button>
                   </form>
                 </section>

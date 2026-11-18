@@ -63,4 +63,30 @@ describe("capture Edge Function entry point", () => {
 
     expect(response.status).toBe(401);
   });
+
+  it("preserves a database error object in the response code", async () => {
+    const handler = createCaptureRequestHandler({
+      origins: [],
+      repository: {
+        findByCanonicalUrl: vi.fn().mockRejectedValue({ message: "permission denied" }),
+        save: vi.fn(),
+      },
+      metadataProvider: { fetch: vi.fn() },
+      verifyToken: vi.fn().mockResolvedValue("auth-user-id"),
+    });
+
+    const response = await handler(
+      new Request("https://example.test/capture", {
+        method: "POST",
+        headers: {
+          Authorization: "Bearer token",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ url: "https://www.facebook.com/share/p/abc/" }),
+      }),
+    );
+
+    expect(response.status).toBe(503);
+    expect(await response.json()).toEqual({ code: "permission denied" });
+  });
 });

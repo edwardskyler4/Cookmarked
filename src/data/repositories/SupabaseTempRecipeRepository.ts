@@ -27,8 +27,18 @@ export class SupabaseTempRecipeRepository implements TempRecipeRepository {
     const { data, error } = await this.client.functions.invoke("capture", {
       body: { url },
     });
-    if (error || !data?.capture)
-      throw new Error(`Unable to capture recipe: ${error?.message ?? "unknown error"}`);
+    if (error || !data?.capture) {
+      let detail = error?.message ?? "unknown error";
+      if (error?.context instanceof Response) {
+        try {
+          const body = await error.context.clone().json();
+          if (typeof body?.code === "string") detail = `${detail} (${body.code})`;
+        } catch {
+          // Keep the SDK error when the function did not return JSON.
+        }
+      }
+      throw new Error(`Unable to capture recipe: ${detail}`);
+    }
     const capture = data.capture;
     return {
       recipeId: capture.captureId,

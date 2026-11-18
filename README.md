@@ -323,11 +323,13 @@ starting values, and the user copies any useful content into the normal recipe f
 
 Saving a reviewed item uses the normal recipe-save function first. The temporary row
 is deleted only after the permanent recipe is created successfully. Apply
-`supabase/migrations/202611060001_temp_recipe_ownership.sql`, deploy the
-`temp_recipes` Edge Function, and rebuild the frontend:
+`supabase/migrations/202611060001_temp_recipe_ownership.sql` and
+`supabase/migrations/202611180001_temp_recipe_capture_insert.sql`, deploy the
+`capture` and `temp_recipes` Edge Functions, and rebuild the frontend:
 
 ```sh
 pnpm exec supabase db push
+pnpm exec supabase functions deploy capture
 pnpm exec supabase functions deploy temp_recipes
 pnpm deploy
 ```
