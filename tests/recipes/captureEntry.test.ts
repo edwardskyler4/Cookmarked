@@ -32,7 +32,10 @@ describe("capture Edge Function entry point", () => {
           Authorization: "Bearer token",
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ url: "https://www.instagram.com/p/ABC123/#comments" }),
+        body: JSON.stringify({
+          url: "https://www.instagram.com/p/ABC123/#comments",
+          text: "Dinner idea",
+        }),
       }),
     );
 
@@ -45,6 +48,7 @@ describe("capture Edge Function entry point", () => {
         canonicalUrl: "https://www.instagram.com/p/ABC123/",
         platform: "Instagram",
         title: "Pasta",
+        description: "Metadata unavailable. Shared text: Dinner idea",
       },
     });
   });

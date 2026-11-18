@@ -43,10 +43,14 @@ describe("Cookmarked home", () => {
     fireEvent.change(screen.getByLabelText("Recipe URL"), {
       target: { value: "https://www.instagram.com/p/ABC123/#comments" },
     });
+    fireEvent.change(screen.getByLabelText("Share text (optional)"), {
+      target: { value: "Dinner idea" },
+    });
     fireEvent.click(screen.getByRole("button", { name: "Import URL" }));
 
     expect(tempRecipeRepository.capture).toHaveBeenCalledWith(
       "https://www.instagram.com/p/ABC123/#comments",
+      "Dinner idea",
     );
     expect(await screen.findByRole("button", { name: "Imported pasta" })).toBeDefined();
   });

@@ -99,6 +99,30 @@ describe("captureLink", () => {
       canonicalUrl: "https://www.facebook.com/share/recipe123",
       platform: "Facebook",
       title: "Imported recipe",
+      description: "Metadata unavailable. Please complete this recipe manually.",
+    });
+  });
+
+  it("preserves shared text in the fallback description", async () => {
+    const repo = repository();
+    const provider: CaptureMetadataProvider = {
+      fetch: vi.fn().mockResolvedValue(null),
+    };
+
+    await captureLink(
+      repo,
+      provider,
+      "authenticated-user",
+      "https://www.facebook.com/share/recipe123",
+      "Try this recipe this weekend!",
+    );
+
+    expect(repo.save).toHaveBeenCalledWith({
+      authUserId: "authenticated-user",
+      canonicalUrl: "https://www.facebook.com/share/recipe123",
+      platform: "Facebook",
+      title: "Imported recipe",
+      description: "Metadata unavailable. Shared text: Try this recipe this weekend!",
     });
   });
 });

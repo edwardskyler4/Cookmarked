@@ -51,9 +51,14 @@ export function createCaptureRequestHandler(config: CaptureHandlerConfig) {
     const authUserId = await config.verifyToken(token);
     if (!authUserId) return response(401, { code: "unauthorized" }, origin, config.origins);
 
-    const body = await request.json().catch(() => null) as { url?: unknown } | null;
+    const body = await request.json().catch(() => null) as {
+      url?: unknown;
+      text?: unknown;
+    } | null;
     if (!body || typeof body.url !== "string")
       return response(400, { code: "missing_url" }, origin, config.origins);
+    if (body.text !== undefined && typeof body.text !== "string")
+      return response(400, { code: "invalid_text" }, origin, config.origins);
 
     try {
       const result = await captureLink(
@@ -61,6 +66,7 @@ export function createCaptureRequestHandler(config: CaptureHandlerConfig) {
         config.metadataProvider,
         authUserId,
         body.url,
+        body.text,
       );
       return response(result.duplicate ? 200 : 201, result, origin, config.origins);
     } catch (error) {

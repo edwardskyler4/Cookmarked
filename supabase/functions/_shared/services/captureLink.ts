@@ -28,6 +28,7 @@ export async function captureLink(
   metadataProvider: CaptureMetadataProvider,
   authUserId: string,
   inputUrl: string,
+  shareText?: string,
 ): Promise<CaptureResult> {
   const { canonicalUrl, platform } = parseCaptureUrl(inputUrl);
   const existing = await repository.findByCanonicalUrl(
@@ -37,7 +38,15 @@ export async function captureLink(
   if (existing) return { duplicate: true, capture: existing };
 
   const metadata = await metadataProvider.fetch(canonicalUrl);
-  const description = optionalText(metadata?.description);
+  const metadataDescription = optionalText(metadata?.description);
+  const normalizedShareText = optionalText(shareText);
+  const description = metadataDescription
+    ? normalizedShareText
+      ? `${metadataDescription}\n\nShared text: ${normalizedShareText}`
+      : metadataDescription
+    : normalizedShareText
+      ? `Metadata unavailable. Shared text: ${normalizedShareText}`
+      : "Metadata unavailable. Please complete this recipe manually.";
   const thumbnailUrl = optionalText(metadata?.thumbnailUrl);
   const mediaType = optionalText(metadata?.mediaType);
   const title = optionalText(metadata?.title) ?? "Imported recipe";
@@ -46,7 +55,7 @@ export async function captureLink(
     canonicalUrl,
     platform,
     title,
-    ...(description ? { description } : {}),
+    description,
     ...(thumbnailUrl ? { thumbnailUrl } : {}),
     ...(mediaType ? { mediaType } : {}),
   };

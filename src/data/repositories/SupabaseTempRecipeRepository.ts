@@ -23,9 +23,9 @@ export class SupabaseTempRecipeRepository implements TempRecipeRepository {
       throw new Error(`Unable to remove temporary recipe: ${error.message}`);
   }
 
-  async capture(url: string): Promise<TempRecipe> {
+  async capture(url: string, shareText?: string): Promise<TempRecipe> {
     const { data, error } = await this.client.functions.invoke("capture", {
-      body: { url },
+      body: { url, ...(shareText?.trim() ? { text: shareText.trim() } : {}) },
     });
     if (error || !data?.capture) {
       let detail = error?.message ?? "unknown error";

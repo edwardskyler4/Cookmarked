@@ -140,14 +140,14 @@ function SignedInApp({
     };
   }, [tempRecipeRepository]);
 
-  async function importUrl(url: string) {
+  async function importUrl(url: string, shareText: string) {
     setImportPending(true);
     setImportError(null);
     try {
       if (onImportUrl) {
         await onImportUrl(url);
       } else if (tempRecipeRepository?.capture) {
-        await tempRecipeRepository.capture(url);
+        await tempRecipeRepository.capture(url, shareText);
       } else {
         throw new Error("Import is not available.");
       }
@@ -295,6 +295,7 @@ function SignedInApp({
                       event.preventDefault();
                       const form = event.currentTarget;
                       const url = new FormData(form).get("recipeUrl");
+                      const shareText = new FormData(form).get("shareText");
                       if (typeof url === "string") {
                         const trimmedUrl = url.trim();
                         console.log(
@@ -302,7 +303,10 @@ function SignedInApp({
                           trimmedUrl,
                           "Planned action: create a temporary recipe for review.",
                         );
-                        void importUrl(trimmedUrl);
+                        void importUrl(
+                          trimmedUrl,
+                          typeof shareText === "string" ? shareText : "",
+                        );
                       }
                     }}
                   >
@@ -317,6 +321,14 @@ function SignedInApp({
                         name="recipeUrl"
                         placeholder="https://example.com/recipe"
                         required
+                      />
+                    </label>
+                    <label className="editor-field">
+                      <span>Share text (optional)</span>
+                      <textarea
+                        name="shareText"
+                        rows={3}
+                        placeholder="Add any text that came with the shared link"
                       />
                     </label>
                     <button

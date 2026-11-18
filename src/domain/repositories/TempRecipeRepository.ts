@@ -3,5 +3,5 @@ import type { TempRecipe } from "../models/TempRecipe";
 export interface TempRecipeRepository {
   list(): Promise<TempRecipe[]>;
   remove(recipeId: number): Promise<void>;
-  capture?(url: string): Promise<TempRecipe>;
+  capture?(url: string, shareText?: string): Promise<TempRecipe>;
 }
