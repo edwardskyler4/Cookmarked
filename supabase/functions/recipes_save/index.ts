@@ -1,43 +1,17 @@
-import { createClient } from "@supabase/supabase-js";
+import { createUserEndpoint, environmentConfig } from "../_shared/endpoint.ts";
 import { SupabaseRecipeRepository } from "../_shared/data/SupabaseRecipeRepository.ts";
 import { handleRecipe } from "../_shared/ui/recipeHandler.ts";
-
-Deno.serve((request: Request) => {
-  // Each request gets an owner-scoped client, never a service-role client.
-  const client = createClient(
-    Deno.env.get("SUPABASE_URL")!,
-    Deno.env.get("SUPABASE_ANON_KEY")!,
-    {
-      global: {
-        headers: { Authorization: request.headers.get("Authorization") ?? "" },
-      },
-      auth: {
-        persistSession: false,
-        autoRefreshToken: false,
-        detectSessionInUrl: false,
-      },
-    },
+if (typeof Deno !== "undefined")
+  Deno.serve(
+    createUserEndpoint(
+      "recipes_save",
+      environmentConfig(),
+      (request, context, headers) =>
+        handleRecipe(
+          request,
+          context.userId,
+          new SupabaseRecipeRepository(context.resource),
+          headers,
+        ),
+    ),
   );
-  const origins = (Deno.env.get("AUTH_ALLOWED_ORIGINS") ?? "")
-    .split(",")
-    .map((value) => value.trim())
-    .filter(Boolean);
-  return handleRecipe(
-    request,
-    new SupabaseRecipeRepository(client),
-    async (token) => {
-      const { data, error } = await client.auth.getUser(token);
-      if (error) {
-        if (
-          error.status === 401 ||
-          error.status === 403 ||
-          error.status === 400
-        )
-          return null;
-        throw error;
-      }
-      return data.user?.id ?? null;
-    },
-    origins,
-  );
-});

@@ -1,3 +1,4 @@
+import { fakeRecipeMetadataService } from "../fakes/recipeMetadataService";
 import { fakeRecipeService } from "../fakes/recipeService";
 import { renderToStaticMarkup } from "react-dom/server";
 import React from "react";
@@ -9,6 +10,7 @@ describe("Cookmarked homepage", () => {
   it("renders the branded loading shell before authentication", () => {
     const markup = renderToStaticMarkup(
       <App
+        recipeMetadataService={fakeRecipeMetadataService()}
         recipeService={fakeRecipeService()}
         authService={fakeAuthService().service}
       />,

@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { fakeRecipeMetadataService } from "../fakes/recipeMetadataService";
 
 import {
   act,
@@ -136,22 +137,33 @@ describe("ImportPage fields", () => {
     };
 
     render(
-      <ImportPage recipeService={fakeRecipeService()} tempRecipe={imported} />,
+      <ImportPage
+        recipeMetadataService={fakeRecipeMetadataService()}
+        recipeService={fakeRecipeService()}
+        tempRecipe={imported}
+      />,
     );
 
-    expect(screen.getByText("Random caption and reel transcript")).toBeDefined();
+    expect(
+      screen.getByText("Random caption and reel transcript"),
+    ).toBeDefined();
     expect(
       (screen.getByLabelText("Recipe Title (Required)") as HTMLInputElement)
         .value,
     ).toBe("Tomato soup");
-    expect((screen.getByLabelText("Source URL") as HTMLInputElement).value).toBe(
-      "https://example.com/soup",
-    );
+    expect(
+      (screen.getByLabelText("Source URL") as HTMLInputElement).value,
+    ).toBe("https://example.com/soup");
     expect(screen.queryByLabelText("Imported text")).toBeNull();
   });
 
   it("keeps each label associated with only its own text box", () => {
-    render(<ImportPage recipeService={fakeRecipeService()} />);
+    render(
+      <ImportPage
+        recipeMetadataService={fakeRecipeMetadataService()}
+        recipeService={fakeRecipeService()}
+      />,
+    );
 
     for (const label of [
       "Source URL",
@@ -170,7 +182,12 @@ describe("ImportPage fields", () => {
   });
 
   it("allows an empty optional Source URL", () => {
-    render(<ImportPage recipeService={fakeRecipeService()} />);
+    render(
+      <ImportPage
+        recipeMetadataService={fakeRecipeMetadataService()}
+        recipeService={fakeRecipeService()}
+      />,
+    );
 
     const source = screen.getByLabelText("Source URL") as HTMLInputElement;
 
@@ -185,7 +202,12 @@ describe("ImportPage fields", () => {
     "Ingredients",
     "Directions",
   ])("marks %s as required", (label) => {
-    render(<ImportPage recipeService={fakeRecipeService()} />);
+    render(
+      <ImportPage
+        recipeMetadataService={fakeRecipeMetadataService()}
+        recipeService={fakeRecipeService()}
+      />,
+    );
     const field = screen.getByLabelText(`${label} (Required)`) as
       HTMLInputElement | HTMLTextAreaElement;
 
@@ -198,7 +220,12 @@ describe("ImportPage fields", () => {
   it.each(["Source URL", "Nutritional Information", "Notes"])(
     "leaves %s optional without an optional marker",
     (label) => {
-      render(<ImportPage recipeService={fakeRecipeService()} />);
+      render(
+        <ImportPage
+          recipeMetadataService={fakeRecipeMetadataService()}
+          recipeService={fakeRecipeService()}
+        />,
+      );
       const field = screen.getByLabelText(label) as
         HTMLInputElement | HTMLTextAreaElement;
 
@@ -209,7 +236,12 @@ describe("ImportPage fields", () => {
   );
 
   it.each(["Meal Type", "Course"])("allows an empty %s selection", (label) => {
-    render(<ImportPage recipeService={fakeRecipeService()} />);
+    render(
+      <ImportPage
+        recipeMetadataService={fakeRecipeMetadataService()}
+        recipeService={fakeRecipeService()}
+      />,
+    );
     const field = screen.getByRole("combobox", {
       name: label,
     }) as HTMLSelectElement;
@@ -225,7 +257,12 @@ describe("ImportPage fields", () => {
   });
 
   it("adds visible spacing between each field label and its text box", () => {
-    render(<ImportPage recipeService={fakeRecipeService()} />);
+    render(
+      <ImportPage
+        recipeMetadataService={fakeRecipeMetadataService()}
+        recipeService={fakeRecipeService()}
+      />,
+    );
 
     const sourceField = screen.getByLabelText("Source URL");
     expect(sourceField.closest("label")?.getAttribute("style")).toContain(
@@ -243,7 +280,12 @@ describe("ImportPage fields", () => {
       ["Select course", "Dessert", "Entree", "Side", "Beverage", "Appetizer"],
     ],
   ] as const)("offers the requested %s choices", (label, choices) => {
-    render(<ImportPage recipeService={fakeRecipeService()} />);
+    render(
+      <ImportPage
+        recipeMetadataService={fakeRecipeMetadataService()}
+        recipeService={fakeRecipeService()}
+      />,
+    );
 
     const dropdown = screen.getByRole("combobox", { name: label });
     expect(
@@ -256,7 +298,12 @@ describe("ImportPage fields", () => {
 
 describe("ImportPage actions", () => {
   it("clears all entered recipe fields", () => {
-    render(<ImportPage recipeService={fakeRecipeService()} />);
+    render(
+      <ImportPage
+        recipeMetadataService={fakeRecipeMetadataService()}
+        recipeService={fakeRecipeService()}
+      />,
+    );
     const textboxes = screen.getAllByRole("textbox") as (
       HTMLInputElement | HTMLTextAreaElement
     )[];
@@ -289,7 +336,12 @@ describe("ImportPage actions", () => {
   });
 
   it("keeps inputs when required fields are missing", () => {
-    render(<ImportPage recipeService={fakeRecipeService()} />);
+    render(
+      <ImportPage
+        recipeMetadataService={fakeRecipeMetadataService()}
+        recipeService={fakeRecipeService()}
+      />,
+    );
     const title = screen.getByLabelText(
       "Recipe Title (Required)",
     ) as HTMLInputElement;
@@ -305,7 +357,12 @@ describe("ImportPage actions", () => {
     style.textContent = appStyles;
     document.head.append(style);
     try {
-      render(<ImportPage recipeService={fakeRecipeService()} />);
+      render(
+        <ImportPage
+          recipeMetadataService={fakeRecipeMetadataService()}
+          recipeService={fakeRecipeService()}
+        />,
+      );
       const form = screen
         .getByLabelText("Recipe Title (Required)")
         .closest("form")!;
@@ -324,7 +381,12 @@ describe("ImportPage actions", () => {
     style.textContent = appStyles;
     document.head.append(style);
     try {
-      render(<ImportPage recipeService={fakeRecipeService()} />);
+      render(
+        <ImportPage
+          recipeMetadataService={fakeRecipeMetadataService()}
+          recipeService={fakeRecipeService()}
+        />,
+      );
       const clear = screen.getByRole("button", { name: "Clear" });
       const save = screen.getByRole("button", { name: "Save" });
       const actions = clear.parentElement!;
@@ -356,7 +418,12 @@ function fillRequiredFields() {
 
 describe("ImportPage validation", () => {
   it("explains why an empty recipe cannot be saved", () => {
-    render(<ImportPage recipeService={fakeRecipeService()} />);
+    render(
+      <ImportPage
+        recipeMetadataService={fakeRecipeMetadataService()}
+        recipeService={fakeRecipeService()}
+      />,
+    );
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
 
     expect(screen.getByRole("alert").textContent).toContain(
@@ -368,7 +435,12 @@ describe("ImportPage validation", () => {
   });
 
   it.each(requiredFields)("identifies an empty %s field", (label) => {
-    render(<ImportPage recipeService={fakeRecipeService()} />);
+    render(
+      <ImportPage
+        recipeMetadataService={fakeRecipeMetadataService()}
+        recipeService={fakeRecipeService()}
+      />,
+    );
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
 
     const field = screen.getByLabelText(`${label} (Required)`);
@@ -380,7 +452,12 @@ describe("ImportPage validation", () => {
   });
 
   it("treats whitespace-only required fields as empty", () => {
-    render(<ImportPage recipeService={fakeRecipeService()} />);
+    render(
+      <ImportPage
+        recipeMetadataService={fakeRecipeMetadataService()}
+        recipeService={fakeRecipeService()}
+      />,
+    );
     fillRequiredFields();
     fireEvent.change(screen.getByLabelText("Ingredients (Required)"), {
       target: { value: " \n " },
@@ -392,7 +469,12 @@ describe("ImportPage validation", () => {
   });
 
   it("clears a saved recipe and confirms success", async () => {
-    render(<ImportPage recipeService={fakeRecipeService()} />);
+    render(
+      <ImportPage
+        recipeMetadataService={fakeRecipeMetadataService()}
+        recipeService={fakeRecipeService()}
+      />,
+    );
     fillRequiredFields();
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
 
@@ -407,7 +489,12 @@ describe("ImportPage validation", () => {
   });
 
   it("removes previous errors after correcting the form and retrying Save", async () => {
-    render(<ImportPage recipeService={fakeRecipeService()} />);
+    render(
+      <ImportPage
+        recipeMetadataService={fakeRecipeMetadataService()}
+        recipeService={fakeRecipeService()}
+      />,
+    );
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
     expect(screen.getByRole("alert")).toBeDefined();
     fillRequiredFields();
@@ -424,7 +511,12 @@ describe("ImportPage validation", () => {
   });
 
   it("clears validation feedback when Clear is pressed", () => {
-    render(<ImportPage recipeService={fakeRecipeService()} />);
+    render(
+      <ImportPage
+        recipeMetadataService={fakeRecipeMetadataService()}
+        recipeService={fakeRecipeService()}
+      />,
+    );
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
     expect(screen.getByRole("alert")).toBeDefined();
     fireEvent.click(screen.getByRole("button", { name: "Clear" }));
@@ -439,7 +531,12 @@ describe("ImportPage validation", () => {
   });
 
   it("explains a Source URL without a domain suffix", () => {
-    render(<ImportPage recipeService={fakeRecipeService()} />);
+    render(
+      <ImportPage
+        recipeMetadataService={fakeRecipeMetadataService()}
+        recipeService={fakeRecipeService()}
+      />,
+    );
     fillRequiredFields();
     fireEvent.change(screen.getByLabelText("Source URL"), {
       target: { value: "not-a-url" },
@@ -453,8 +550,13 @@ describe("ImportPage validation", () => {
       ),
     ).toBeDefined();
   });
-    it("shows an error immediately for an invalid thumbnail URL", () => {
-    render(<ImportPage recipeService={fakeRecipeService()} />);
+  it("shows an error immediately for an invalid thumbnail URL", () => {
+    render(
+      <ImportPage
+        recipeMetadataService={fakeRecipeMetadataService()}
+        recipeService={fakeRecipeService()}
+      />,
+    );
 
     const thumbnail = screen.getByLabelText("Thumbnail URL");
 
@@ -463,15 +565,18 @@ describe("ImportPage validation", () => {
     });
 
     expect(
-      screen.getByText(
-        "Enter a valid HTTP or HTTPS thumbnail URL.",
-      ),
+      screen.getByText("Enter a valid HTTP or HTTPS thumbnail URL."),
     ).toBeDefined();
     expect(thumbnail.getAttribute("aria-invalid")).toBe("true");
   });
 
   it("prevents saving a recipe with an invalid thumbnail URL", () => {
-    render(<ImportPage recipeService={fakeRecipeService()} />);
+    render(
+      <ImportPage
+        recipeMetadataService={fakeRecipeMetadataService()}
+        recipeService={fakeRecipeService()}
+      />,
+    );
 
     fillRequiredFields();
 
@@ -483,15 +588,18 @@ describe("ImportPage validation", () => {
 
     expect(screen.getByRole("alert")).toBeDefined();
     expect(
-      screen.getByText(
-        "Enter a valid HTTP or HTTPS thumbnail URL.",
-      ),
+      screen.getByText("Enter a valid HTTP or HTTPS thumbnail URL."),
     ).toBeDefined();
     expect(screen.queryByText("Recipe saved")).toBeNull();
   });
 
   it("accepts a valid HTTPS thumbnail URL", async () => {
-    render(<ImportPage recipeService={fakeRecipeService()} />);
+    render(
+      <ImportPage
+        recipeMetadataService={fakeRecipeMetadataService()}
+        recipeService={fakeRecipeService()}
+      />,
+    );
 
     fillRequiredFields();
 
@@ -500,9 +608,7 @@ describe("ImportPage validation", () => {
     });
 
     expect(
-      screen.queryByText(
-        "Enter a valid HTTP or HTTPS thumbnail URL.",
-      ),
+      screen.queryByText("Enter a valid HTTP or HTTPS thumbnail URL."),
     ).toBeNull();
 
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
@@ -516,7 +622,12 @@ it("gives invalid recipe fields a stronger visible border", () => {
   style.textContent = appStyles;
   document.head.append(style);
   try {
-    render(<ImportPage recipeService={fakeRecipeService()} />);
+    render(
+      <ImportPage
+        recipeMetadataService={fakeRecipeMetadataService()}
+        recipeService={fakeRecipeService()}
+      />,
+    );
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
 
     const field = screen.getByLabelText("Recipe Title (Required)");
@@ -546,7 +657,10 @@ describe("recipe saving", () => {
               theme === "dark" ? "page-shell dark-theme" : "page-shell"
             }
           >
-            <ImportPage recipeService={fakeRecipeService()} />
+            <ImportPage
+              recipeMetadataService={fakeRecipeMetadataService()}
+              recipeService={fakeRecipeService()}
+            />
           </div>,
         );
         fillRequiredFields();
@@ -563,7 +677,12 @@ describe("recipe saving", () => {
   );
 
   it("moves focus to the success message after saving", async () => {
-    render(<ImportPage recipeService={fakeRecipeService()} />);
+    render(
+      <ImportPage
+        recipeMetadataService={fakeRecipeMetadataService()}
+        recipeService={fakeRecipeService()}
+      />,
+    );
     fillRequiredFields();
     const save = screen.getByRole("button", { name: "Save" });
     save.focus();
@@ -577,7 +696,12 @@ describe("recipe saving", () => {
 
   it("submits all form values through the injected service", async () => {
     const service = fakeRecipeService();
-    render(<ImportPage recipeService={service} />);
+    render(
+      <ImportPage
+        recipeMetadataService={fakeRecipeMetadataService()}
+        recipeService={service}
+      />,
+    );
     fillRequiredFields();
     fireEvent.change(screen.getByLabelText("Source URL"), {
       target: { value: "https://example.com/soup" },
@@ -616,7 +740,12 @@ describe("recipe saving", () => {
   });
   it("adds HTTPS before submitting a source URL without a scheme", async () => {
     const service = fakeRecipeService();
-    render(<ImportPage recipeService={service} />);
+    render(
+      <ImportPage
+        recipeMetadataService={fakeRecipeMetadataService()}
+        recipeService={service}
+      />,
+    );
     fillRequiredFields();
     fireEvent.change(screen.getByLabelText("Source URL"), {
       target: { value: "example.com/soup" },
@@ -634,7 +763,12 @@ describe("recipe saving", () => {
     ["https:/example.com/soup", "https://example.com/soup"],
   ])("corrects source URL scheme %s", async (url, expected) => {
     const service = fakeRecipeService();
-    render(<ImportPage recipeService={service} />);
+    render(
+      <ImportPage
+        recipeMetadataService={fakeRecipeMetadataService()}
+        recipeService={service}
+      />,
+    );
     fillRequiredFields();
     fireEvent.change(screen.getByLabelText("Source URL"), {
       target: { value: url },
@@ -655,7 +789,12 @@ describe("recipe saving", () => {
     "https://example.",
   ])("rejects source URL %s before calling the service", (url) => {
     const service = fakeRecipeService();
-    render(<ImportPage recipeService={service} />);
+    render(
+      <ImportPage
+        recipeMetadataService={fakeRecipeMetadataService()}
+        recipeService={service}
+      />,
+    );
     fillRequiredFields();
     fireEvent.change(screen.getByLabelText("Source URL"), {
       target: { value: url },
@@ -672,7 +811,12 @@ describe("recipe saving", () => {
     "rejects invalid serving size %s",
     (value) => {
       const service = fakeRecipeService();
-      render(<ImportPage recipeService={service} />);
+      render(
+        <ImportPage
+          recipeMetadataService={fakeRecipeMetadataService()}
+          recipeService={service}
+        />,
+      );
       fillRequiredFields();
       fireEvent.change(screen.getByLabelText("Serving Size (Required)"), {
         target: { value },
@@ -696,7 +840,12 @@ describe("recipe saving", () => {
           }),
       ),
     };
-    render(<ImportPage recipeService={service} />);
+    render(
+      <ImportPage
+        recipeMetadataService={fakeRecipeMetadataService()}
+        recipeService={service}
+      />,
+    );
     fillRequiredFields();
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
     const saving = screen.getByRole("button", {
@@ -715,7 +864,12 @@ describe("recipe saving", () => {
   it("preserves inputs after a save failure", async () => {
     const service = fakeRecipeService();
     service.create.mockRejectedValue(new Error("private details"));
-    render(<ImportPage recipeService={service} />);
+    render(
+      <ImportPage
+        recipeMetadataService={fakeRecipeMetadataService()}
+        recipeService={service}
+      />,
+    );
     fillRequiredFields();
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
     expect((await screen.findByRole("alert")).textContent).toBe(
@@ -735,12 +889,40 @@ describe("recipe saving", () => {
     service.create.mockRejectedValue(
       new RecipeSaveError("invalid_input", "url"),
     );
-    render(<ImportPage recipeService={service} />);
+    render(
+      <ImportPage
+        recipeMetadataService={fakeRecipeMetadataService()}
+        recipeService={service}
+      />,
+    );
     fillRequiredFields();
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
     expect(
       await screen.findByText(
         "Source URL must include a valid domain (such as example.com) or be empty.",
+      ),
+    ).toBeDefined();
+  });
+});
+
+describe("conversion feedback", () => {
+  it("explains when an imported recipe is no longer available", async () => {
+    const service = fakeRecipeService();
+    const save = vi
+      .fn()
+      .mockRejectedValue(new RecipeSaveError("temp_recipe_not_found"));
+    render(
+      <ImportPage
+        recipeMetadataService={fakeRecipeMetadataService()}
+        recipeService={service}
+        saveRecipe={save}
+      />,
+    );
+    fillRequiredFields();
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    expect(
+      await screen.findByText(
+        "This imported recipe is no longer available. Refresh your inbox.",
       ),
     ).toBeDefined();
   });

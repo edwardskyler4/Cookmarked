@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { handleAuth } from "../../supabase/functions/_shared/ui/authHandler";
+import { handleAuth } from "../fakes/endpoints";
 import { AuthError } from "../../supabase/functions/_shared/domain/AuthGateway";
 const origin = "https://cookmarked.edw20009.workers.dev";
 const gateway = () => ({

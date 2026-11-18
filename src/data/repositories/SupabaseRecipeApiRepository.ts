@@ -1,3 +1,4 @@
+import { functionFailure } from "../functionFailure";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   RecipeSaveError,
@@ -8,22 +9,25 @@ import {
 export class SupabaseRecipeApiRepository implements RecipeApiRepository {
   constructor(private readonly client: SupabaseClient) {}
 
-  async create(recipe: RecipeDraft): Promise<{ recipeId: number }> {
+  create(recipe: RecipeDraft): Promise<{ recipeId: number }> {
+    return this.save(recipe);
+  }
+
+  convert(
+    tempRecipeId: number,
+    recipe: RecipeDraft,
+  ): Promise<{ recipeId: number }> {
+    return this.save({ ...recipe, tempRecipeId });
+  }
+
+  private async save(
+    recipe: RecipeDraft & { tempRecipeId?: number },
+  ): Promise<{ recipeId: number }> {
     const { data, error } = await this.client.functions.invoke("recipes_save", {
       body: recipe,
     });
     if (error) {
-      let code = "unavailable";
-      let field: string | undefined;
-      if (error.context instanceof Response) {
-        try {
-          const body = await error.context.json();
-          if (typeof body?.code === "string") code = body.code;
-          if (typeof body?.field === "string") field = body.field;
-        } catch {
-          /* Transport errors use the generic message. */
-        }
-      }
+      const { code, field } = await functionFailure(error);
       throw new RecipeSaveError(code, field);
     }
     if (!Number.isInteger(data?.recipeId))

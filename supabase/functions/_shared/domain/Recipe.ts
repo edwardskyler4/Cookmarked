@@ -1,20 +1,8 @@
-import type { RecipePlatform } from "./RecipeMetadata.ts";
-
 export type MealType =
-  | "Breakfast"
-  | "Lunch"
-  | "Dinner"
-  | "Supper"
-  | "Snack"
-  | "N/A";
+  "Breakfast" | "Lunch" | "Dinner" | "Supper" | "Snack" | "N/A";
 
 export type Course =
-  | "Dessert"
-  | "Entree"
-  | "Side"
-  | "Beverage"
-  | "Appetizer"
-  | "N/A";
+  "Dessert" | "Entree" | "Side" | "Beverage" | "Appetizer" | "N/A";
 
 export interface RecipeInput {
   title: string;
@@ -27,7 +15,7 @@ export interface RecipeInput {
   servings?: number;
   mealType: MealType;
   course: Course;
-  sharedFromPlatform?: RecipePlatform;
+  sharedFromPlatform?: string;
   url?: string;
   mediaType?: string;
   thumbnailUrl?: string;
@@ -39,10 +27,6 @@ export interface Recipe extends RecipeInput {
   userId: number;
   createdAt: Date;
   updatedAt: Date;
-}
-
-export interface RecipeCreator {
-  create(authUserId: string, input: RecipeInput): Promise<Recipe>;
 }
 
 export interface RecipeReader {

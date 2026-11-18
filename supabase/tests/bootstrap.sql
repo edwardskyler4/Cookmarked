@@ -32,3 +32,12 @@ create table public.recipe (
   shared_from_platform text, url text, media_type varchar(45), thumbnail_url text, nutrition_info text
 );
 alter table public.recipe enable row level security;
+
+-- Hosted temporary recipe schema supplied on 2026-11-14.
+create table public.temp_recipe (
+  recipe_id integer generated always as identity primary key,
+  user_id integer not null references public.profile(user_id),
+  title varchar(45) not null, text text,
+  created_at timestamptz not null default now(), updated_at timestamptz not null default now(),
+  shared_from_platform text, url text, platform varchar(45), media_type varchar(45), thumbnail_url text
+);

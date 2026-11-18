@@ -4,6 +4,9 @@ import type { RecipeApiRepository } from "../domain/repositories/RecipeApiReposi
 export function createRecipeService(
   repository: RecipeApiRepository,
 ): RecipeApiRepository {
-  return { create: (recipe) => repository.create(recipe) };
+  return {
+    create: (recipe) => repository.create(recipe),
+    convert: (tempRecipeId, recipe) => repository.convert(tempRecipeId, recipe),
+  };
 }
 export type RecipeService = ReturnType<typeof createRecipeService>;

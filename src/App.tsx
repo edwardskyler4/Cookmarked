@@ -98,7 +98,9 @@ function SignedInApp({
   const [recipesLoading, setRecipesLoading] = useState(true);
   const [recipesError, setRecipesError] = useState<string | null>(null);
   const [tempRecipes, setTempRecipes] = useState<TempRecipe[]>([]);
-  const [selectedTempRecipeId, setSelectedTempRecipeId] = useState<number | null>(null);
+  const [selectedTempRecipeId, setSelectedTempRecipeId] = useState<
+    number | null
+  >(null);
 
   const reloadRecipes = useCallback(async () => {
     setRecipesLoading(true);
@@ -235,7 +237,10 @@ function SignedInApp({
           {page === "add" && (
             <>
               {tempRecipeRepository && (
-                <section className="page-panel import-inbox" aria-labelledby="import-inbox-heading">
+                <section
+                  className="page-panel import-inbox"
+                  aria-labelledby="import-inbox-heading"
+                >
                   <p className="eyebrow">Import inbox</p>
                   <h2 id="import-inbox-heading">Imported recipes:</h2>
                   {tempRecipes.length === 0 ? (
@@ -251,7 +256,9 @@ function SignedInApp({
                               : "filter-chip"
                           }
                           key={tempRecipe.recipeId}
-                          onClick={() => setSelectedTempRecipeId(tempRecipe.recipeId)}
+                          onClick={() =>
+                            setSelectedTempRecipeId(tempRecipe.recipeId)
+                          }
                         >
                           {tempRecipe.title}
                         </button>
@@ -301,7 +308,6 @@ function SignedInApp({
                     ? (draft) =>
                         convertTempRecipe(
                           recipeService,
-                          tempRecipeRepository,
                           selectedTempRecipeId,
                           draft,
                         ).then((result) => {
