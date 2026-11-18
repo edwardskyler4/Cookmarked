@@ -121,4 +121,28 @@ export class SupabaseRecipeGateway implements RecipeCreator, RecipeReader {
 
     return toRecipe(data);
   }
+  
+  async delete(authUserId: string, recipeId: number): Promise<void> {
+    if (!Number.isSafeInteger(recipeId) || recipeId <= 0) {
+      throw new Error("Invalid recipe ID.");
+    }
+
+    const profile = await this.resolveProfile(authUserId);
+
+    const { data, error } = await this.client
+      .from("recipe")
+      .delete()
+      .eq("recipe_id", recipeId)
+      .eq("user_id", profile.user_id)
+      .select("recipe_id");
+
+    if (error) {
+      throw new Error(`Unable to delete recipe: ${error.message}`);
+    }
+
+    if (!data || data.length !== 1) {
+      throw new Error("Recipe not found or not authorized.");
+    }
+  }
+
 }

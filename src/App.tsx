@@ -15,6 +15,8 @@ import type { TempRecipe } from "./domain/models/TempRecipe";
 import type { TempRecipeRepository } from "./domain/repositories/TempRecipeRepository";
 import { convertTempRecipe } from "./services/convertTempRecipe";
 import type { RecipeMetadataService } from "./services/recipeMetadataService";
+import RecipeDetailsPage from "./ui/routes/RecipeDetailsPage";
+
 
 const filters = ["All recipes", "Breakfast", "Dinner", "Dessert"];
 const pageLabels = {
@@ -94,11 +96,59 @@ function SignedInApp({
   onImportUrl: (url: string) => void | Promise<void>;
 }) {
   const [page, setPage] = useState<Page>("home");
+  const [selectedRecipeId, setSelectedRecipeId] =
+  useState<number | null>(null);
+
   const [recipes, setRecipes] = useState<Recipe[]>([]);
+  const [selectedFilter, setSelectedFilter] = useState("All recipes");
+  const selectedRecipe =
+  recipes.find(
+    (recipe) => recipe.recipeId === selectedRecipeId
+  ) ?? null;
   const [recipesLoading, setRecipesLoading] = useState(true);
   const [recipesError, setRecipesError] = useState<string | null>(null);
   const [tempRecipes, setTempRecipes] = useState<TempRecipe[]>([]);
   const [selectedTempRecipeId, setSelectedTempRecipeId] = useState<number | null>(null);
+  const [openRecipeMenuId, setOpenRecipeMenuId] =
+  useState<number | null>(null);
+  const [deletingRecipeId, setDeletingRecipeId] =
+    useState<number | null>(null);
+
+  const [deleteError, setDeleteError] =
+    useState<string | null>(null);
+  useEffect(() => {
+    if (openRecipeMenuId === null) {
+      return;
+    }
+
+    const handleOutsideClick = (event: MouseEvent) => {
+      const target = event.target;
+
+      if (
+        target instanceof Element &&
+        !target.closest(".recipe-menu-container")
+      ) {
+        setOpenRecipeMenuId(null);
+      }
+    };
+
+    document.addEventListener("mousedown", handleOutsideClick);
+
+    return () => {
+      document.removeEventListener("mousedown", handleOutsideClick);
+    };
+  }, [openRecipeMenuId]);
+  const filteredRecipes = recipes.filter((recipe) => {
+    if (selectedFilter === "All recipes") {
+      return true;
+    }
+
+    if (selectedFilter === "Dessert") {
+      return recipe.course === "Dessert";
+    }
+
+    return recipe.mealType === selectedFilter;
+  });
 
   const reloadRecipes = useCallback(async () => {
     setRecipesLoading(true);
@@ -111,6 +161,46 @@ function SignedInApp({
       setRecipesLoading(false);
     }
   }, [recipeReader]);
+
+  async function handleDeleteRecipe(recipe: Recipe) {
+    const confirmed = window.confirm(
+      `Are you sure you want to delete "${recipe.title}"? This cannot be undone.`
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    setOpenRecipeMenuId(null);
+    setDeleteError(null);
+    setDeletingRecipeId(recipe.recipeId);
+
+    try {
+      if (!recipeReader.delete) {
+        throw new Error("Recipe deletion is not available.");
+      }
+
+      await recipeReader.delete(recipe.recipeId);
+
+      setRecipes((currentRecipes) =>
+        currentRecipes.filter(
+          (item) => item.recipeId !== recipe.recipeId
+        )
+      );
+
+      setSelectedRecipeId((currentId) =>
+        currentId === recipe.recipeId ? null : currentId
+      );
+    } catch (error) {
+      console.error("Unable to delete recipe:", error);
+      setDeleteError(
+        "Unable to delete this recipe. Please try again."
+      );
+    } finally {
+      setDeletingRecipeId(null);
+    }
+  }
+
 
   useEffect(() => {
     void reloadRecipes();
@@ -176,7 +266,7 @@ function SignedInApp({
           </div>
         </header>
         <div className="content-area">
-          {page === "home" && (
+          {page === "home" && selectedRecipe === null && (
             <>
               <div className="search-row">
                 <label className="search-bar">
@@ -186,29 +276,49 @@ function SignedInApp({
                 </label>
               </div>
               <div className="filter-row" aria-label="Recipe filters">
-                {filters.map((filter, index) => (
+                {filters.map((filter) => (
                   <button
-                    className={
-                      index === 0 ? "filter-chip active" : "filter-chip"
-                    }
+                    type="button"
                     key={filter}
+                    className={
+                      selectedFilter === filter
+                        ? "filter-chip active"
+                        : "filter-chip"
+                    }
+                    onClick={() => setSelectedFilter(filter)}
+                    aria-pressed={selectedFilter === filter}
                   >
                     {filter}
                   </button>
                 ))}
               </div>
               <div className="recipe-list" aria-label="Recipe list">
+                {deleteError && (
+                  <p role="alert" className="recipe-delete-error">
+                    {deleteError}
+                  </p>
+                )}
                 {recipesLoading && <p role="status">Loading your recipes...</p>}
                 {recipesError && <p role="alert">{recipesError}</p>}
-                {!recipesLoading && !recipesError && recipes.length === 0 && (
-                  <p>No recipes saved yet.</p>
+                {!recipesLoading && !recipesError && filteredRecipes.length === 0 && (
+                  <p>
+                    {recipes.length === 0
+                      ? "No recipes saved yet."
+                      : `No ${selectedFilter.toLowerCase()} recipes found.`}
+                  </p>
                 )}
-                {recipes.map((recipe, index) => (
+                {filteredRecipes.map((recipe, index) => (
                   <article className="recipe-card" key={recipe.recipeId}>
-                    <div
-                      className="recipe-image-placeholder"
-                      aria-hidden="true"
+                    <button
+                      type="button"
+                      className="recipe-card-open"
+                      onClick={() => setSelectedRecipeId(recipe.recipeId)}
+                      aria-label={`More options for ${recipe.title}`}
                     >
+                      <div
+                        className="recipe-image-placeholder"
+                        aria-hidden="true"
+                      >
                       {index === 0 && <img src="/logo.jpg" alt="" />}
                     </div>
                     <div className="recipe-card-content">
@@ -220,16 +330,54 @@ function SignedInApp({
                         Prep time · {recipe.prepTime ?? "Not set"}
                       </p>
                     </div>
-                    <button
-                      className="more-button"
-                      aria-label={`More options for ${recipe.title}`}
-                    >
-                      ···
                     </button>
+                    <div className="recipe-menu-container">
+                      <button
+                        type="button"
+                        className="more-button"
+                        aria-label={`More options for ${recipe.title}`}
+                        aria-expanded={openRecipeMenuId === recipe.recipeId}
+                        onClick={() =>
+                          setOpenRecipeMenuId(
+                            openRecipeMenuId === recipe.recipeId
+                              ? null
+                              : recipe.recipeId
+                          )
+                        }
+                      >
+                        ···
+                      </button>
+
+                      {openRecipeMenuId === recipe.recipeId && (
+                        <div className="recipe-dropdown">
+                          
+                          <button
+                            type="button"
+                            className="recipe-delete-button"
+                            disabled={deletingRecipeId === recipe.recipeId}
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              void handleDeleteRecipe(recipe);
+                            }}
+                          >
+                            {deletingRecipeId === recipe.recipeId
+                              ? "Deleting..."
+                              : "Delete recipe"}
+                          </button>
+
+                        </div>
+                      )}
+                    </div>
                   </article>
                 ))}
               </div>
             </>
+          )}
+          {page === "home" && selectedRecipe && (
+            <RecipeDetailsPage
+              recipe={selectedRecipe}
+              onBack={() => setSelectedRecipeId(null)}
+            />
           )}
           {page === "planner" && <PlannerPage />}
           {page === "add" && (
@@ -336,7 +484,10 @@ function SignedInApp({
             <button
               className={page === type ? "nav-item active" : "nav-item"}
               aria-current={page === type ? "page" : undefined}
-              onClick={() => setPage(type)}
+              onClick={() => {
+                setSelectedRecipeId(null);
+                setPage(type);
+              }}
               key={label}
             >
               <NavigationIcon type={type} />

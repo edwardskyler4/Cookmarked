@@ -37,7 +37,7 @@ function preflightResponse(request: Request, origins: string[]): Response {
     Vary: "Origin",
     "Access-Control-Allow-Headers":
       "authorization, apikey, content-type, x-client-info",
-    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+    "Access-Control-Allow-Methods": "GET, POST, DELETE, OPTIONS",
   });
 
   if (origin && !origins.includes(origin)) {
@@ -78,8 +78,57 @@ export function createRecipeRequestHandler({
     const { data, error } = await client.auth.getUser(token);
     if (error || !data.user) return errorResponse(401);
 
-    const creator: RecipeCreator = new SupabaseRecipeGateway(client);
+    
+    const gateway = new SupabaseRecipeGateway(client);
+
+    if (request.method === "DELETE") {
+      const origin = request.headers.get("Origin");
+      const headers = new Headers({
+        "Content-Type": "application/json",
+        "Cache-Control": "no-store",
+        Vary: "Origin",
+      });
+
+      if (origin && origins.includes(origin)) {
+        headers.set("Access-Control-Allow-Origin", origin);
+      }
+
+      if (origin && !origins.includes(origin)) {
+        return new Response(
+          JSON.stringify({ code: "invalid_input" }),
+          { status: 403, headers },
+        );
+      }
+
+      const url = new URL(request.url);
+      const id = Number(url.searchParams.get("recipeId"));
+
+      if (
+        !url.searchParams.has("recipeId") ||
+        !Number.isSafeInteger(id) ||
+        id <= 0
+      ) {
+        return new Response(
+          JSON.stringify({ code: "invalid_input" }),
+          { status: 400, headers },
+        );
+      }
+
+      try {
+        await gateway.delete(data.user.id, id);
+        return new Response(null, { status: 204, headers });
+      } catch (error) {
+        console.error("Unable to delete recipe", error);
+        return new Response(
+          JSON.stringify({ code: "unavailable" }),
+          { status: 503, headers },
+        );
+      }
+    }
+
+    const creator: RecipeCreator = gateway;
     return handleRecipe(request, data.user.id, creator, origins);
+
   };
 }
 

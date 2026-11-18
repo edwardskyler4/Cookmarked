@@ -26,4 +26,18 @@ export class SupabaseRecipeRepository implements RecipeReader {
       updatedAt: new Date(recipe.updatedAt),
     }));
   }
+
+  async delete(recipeId: number): Promise<void> {
+    const { error } = await this.client.functions.invoke(
+      `recipes?recipeId=${encodeURIComponent(recipeId)}`,
+      {
+        method: "DELETE",
+      },
+    );
+
+    if (error) {
+      throw new Error(`Unable to delete recipe: ${error.message}`);
+    }
+  }
+
 }
