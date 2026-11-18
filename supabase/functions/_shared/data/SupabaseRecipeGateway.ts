@@ -1,10 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type {
-  Recipe,
-  RecipeCreator,
-  RecipeInput,
-  RecipeReader,
-} from "../domain/Recipe.ts";
+import type { Recipe, RecipeInput, RecipeReader } from "../domain/Recipe.ts";
 
 type ProfileRow = {
   user_id: number;
@@ -54,7 +49,7 @@ function toRecipe(row: RecipeRow): Recipe {
   };
 }
 
-export class SupabaseRecipeGateway implements RecipeCreator, RecipeReader {
+export class SupabaseRecipeGateway implements RecipeReader {
   constructor(private readonly client: SupabaseClient) {}
 
   private async resolveProfile(authUserId: string): Promise<ProfileRow> {
@@ -83,7 +78,9 @@ export class SupabaseRecipeGateway implements RecipeCreator, RecipeReader {
       .returns<RecipeRow[]>();
 
     if (error || !data) {
-      throw new Error(`Unable to list recipes: ${error?.message ?? "unknown error"}`);
+      throw new Error(
+        `Unable to list recipes: ${error?.message ?? "unknown error"}`,
+      );
     }
 
     return data.map(toRecipe);

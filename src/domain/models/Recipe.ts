@@ -1,20 +1,8 @@
-import type { RecipePlatform } from "./RecipeMetaData.ts";
-
 export type MealType =
-  | "Breakfast"
-  | "Lunch"
-  | "Dinner"
-  | "Supper"
-  | "Snack"
-  | "N/A";
+  "Breakfast" | "Lunch" | "Dinner" | "Supper" | "Snack" | "N/A";
 
 export type Course =
-  | "Dessert"
-  | "Entree"
-  | "Side"
-  | "Beverage"
-  | "Appetizer"
-  | "N/A";
+  "Dessert" | "Entree" | "Side" | "Beverage" | "Appetizer" | "N/A";
 
 export interface RecipeInput {
   title: string;
@@ -27,7 +15,7 @@ export interface RecipeInput {
   servings?: number;
   mealType: MealType;
   course: Course;
-  sharedFromPlatform?: RecipePlatform;
+  sharedFromPlatform?: string;
   url?: string;
   mediaType?: string;
   thumbnailUrl?: string;

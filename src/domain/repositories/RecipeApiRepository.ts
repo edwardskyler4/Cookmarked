@@ -17,6 +17,10 @@ export interface RecipeDraft {
 
 export interface RecipeApiRepository {
   create(recipe: RecipeDraft): Promise<{ recipeId: number }>;
+  convert(
+    tempRecipeId: number,
+    recipe: RecipeDraft,
+  ): Promise<{ recipeId: number }>;
 }
 
 export class RecipeSaveError extends Error {

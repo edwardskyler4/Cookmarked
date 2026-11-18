@@ -118,3 +118,143 @@ describe("recipe repositories with the real SDK and local HTTP responses", () =>
     ).rejects.toMatchObject({ code: "unavailable" });
   });
 });
+
+describe("atomic conversion through Supabase", () => {
+  it("calls one RPC with mapped fields", async () => {
+    const { client, requests, respond } = setup();
+    respond.mockResolvedValue({ recipeId: 7 });
+    await expect(
+      new SupabaseRecipeRepository(client).convert(3, {
+        ...recipeInput,
+        userId: 42,
+      }),
+    ).resolves.toEqual({ recipeId: 7 });
+    expect(requests).toHaveLength(1);
+    expect(new URL(requests[0].url).pathname).toBe(
+      "/rest/v1/rpc/convert_temp_recipe",
+    );
+    expect(await requests[0].json()).toMatchObject({
+      p_temp_recipe_id: 3,
+      p_recipe: { title: "Soup", user_id: 42, note: "Family favorite" },
+    });
+  });
+
+  it("maps a missing or inaccessible temporary row to a domain error", async () => {
+    const { client, respond } = setup();
+    respond.mockResolvedValue(
+      new Response(
+        JSON.stringify({ code: "P0002", message: "no data found" }),
+        { status: 400, headers: { "Content-Type": "application/json" } },
+      ),
+    );
+    await expect(
+      new SupabaseRecipeRepository(client).convert(3, {
+        ...recipeInput,
+        userId: 42,
+      }),
+    ).rejects.toMatchObject({ code: "temp_recipe_not_found" });
+  });
+
+  it("sends a single conversion request from the browser", async () => {
+    const { client, requests, respond } = setup();
+    respond.mockResolvedValue({ recipeId: 7 });
+    await expect(
+      createRecipeService(new SupabaseRecipeApiRepository(client)).convert(
+        3,
+        recipeInput,
+      ),
+    ).resolves.toEqual({ recipeId: 7 });
+    expect(requests).toHaveLength(1);
+    expect(new URL(requests[0].url).pathname).toBe(
+      "/functions/v1/recipes_save",
+    );
+    expect(await requests[0].json()).toEqual({
+      ...recipeInput,
+      tempRecipeId: 3,
+    });
+  });
+});
+
+describe("gateway and constraint error translation", () => {
+  it.each([
+    [401, "Not JSON", "unauthorized"],
+    [429, "Not JSON", "rate_limited"],
+    [503, '{"code":"BOOT_ERROR"}', "unavailable"],
+  ])("normalizes gateway status %s", async (status, body, code) => {
+    const { client, respond } = setup();
+    respond.mockResolvedValue(
+      new Response(body as string, { status: status as number }),
+    );
+    await expect(
+      new SupabaseRecipeApiRepository(client).create(recipeInput),
+    ).rejects.toMatchObject({ code });
+  });
+  it("maps a known storage constraint to field validation", async () => {
+    const { client, respond } = setup();
+    respond.mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          code: "23514",
+          message: 'new row violates check constraint "recipe_title_content"',
+        }),
+        { status: 400, headers: { "Content-Type": "application/json" } },
+      ),
+    );
+    await expect(
+      new SupabaseRecipeRepository(client).insert({
+        ...recipeInput,
+        userId: 42,
+      }),
+    ).rejects.toMatchObject({ code: "invalid_input", field: "title" });
+  });
+  it("maps typed RPC input rejection to field validation", async () => {
+    const { client, respond } = setup();
+    respond.mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          code: "22023",
+          message: "Invalid recipe field",
+          hint: "servings",
+        }),
+        { status: 400, headers: { "Content-Type": "application/json" } },
+      ),
+    );
+    await expect(
+      new SupabaseRecipeRepository(client).convert(3, {
+        ...recipeInput,
+        userId: 42,
+      }),
+    ).rejects.toMatchObject({ code: "invalid_input", field: "servings" });
+  });
+});
+
+it("does not treat inherited object keys as recognized constraint names", async () => {
+  const { client, respond } = setup();
+  respond.mockResolvedValue(
+    new Response(
+      JSON.stringify({
+        code: "23514",
+        message: 'violates check constraint "constructor"',
+      }),
+      { status: 400, headers: { "Content-Type": "application/json" } },
+    ),
+  );
+  await expect(
+    new SupabaseRecipeRepository(client).insert({ ...recipeInput, userId: 42 }),
+  ).rejects.toMatchObject({ code: "23514" });
+});
+it("does not forward an unrecognized RPC hint as a field", async () => {
+  const { client, respond } = setup();
+  respond.mockResolvedValue(
+    new Response(JSON.stringify({ code: "22023", hint: "constructor" }), {
+      status: 400,
+      headers: { "Content-Type": "application/json" },
+    }),
+  );
+  await expect(
+    new SupabaseRecipeRepository(client).convert(3, {
+      ...recipeInput,
+      userId: 42,
+    }),
+  ).rejects.toMatchObject({ code: "invalid_input", field: undefined });
+});

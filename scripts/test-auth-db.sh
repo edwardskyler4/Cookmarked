@@ -30,8 +30,17 @@ done
 
 docker exec -i "$auth_test_name" psql -U postgres -v ON_ERROR_STOP=1 < "$auth_repo_root/supabase/tests/bootstrap.sql"
 for migration in "$auth_repo_root"/supabase/migrations/*.sql; do
+  if [[ "$migration" == */202611160001_recipe_integrity.sql ]]; then
+    docker exec -i "$auth_test_name" psql -U postgres -v ON_ERROR_STOP=1 < "$auth_repo_root/supabase/tests/recipe_legacy_before.sql"
+  fi
   docker exec -i "$auth_test_name" psql -U postgres -v ON_ERROR_STOP=1 < "$migration"
+  if [[ "$migration" == */202611160001_recipe_integrity.sql ]]; then
+    docker exec -i "$auth_test_name" psql -U postgres -v ON_ERROR_STOP=1 < "$auth_repo_root/supabase/tests/recipe_legacy_after.sql"
+  fi
 done
 docker exec -i "$auth_test_name" psql -U postgres -v ON_ERROR_STOP=1 < "$auth_repo_root/supabase/tests/auth.sql"
 docker exec -i "$auth_test_name" psql -U postgres -v ON_ERROR_STOP=1 < "$auth_repo_root/supabase/tests/recipes.sql"
+docker exec -i "$auth_test_name" psql -U postgres -v ON_ERROR_STOP=1 < "$auth_repo_root/supabase/tests/recipe_integrity.sql"
+bash "$auth_repo_root/supabase/tests/conversion-concurrency.sh" "$auth_test_name"
+docker exec -i "$auth_test_name" psql -U postgres -v ON_ERROR_STOP=1 < "$auth_repo_root/supabase/reference/recipe_integrity_audit.sql"
 echo 'Authentication and recipe database tests passed.'

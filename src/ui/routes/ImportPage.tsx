@@ -46,7 +46,6 @@ function isValidThumbnailUrl(value: string): boolean {
   }
 }
 
-
 export default function ImportPage({
   recipeService,
   recipeMetadataService,
@@ -115,8 +114,7 @@ export default function ImportPage({
         field.value.trim().length > 45
       ) {
         nextErrors[field.name] = "Use 45 characters or fewer.";
-      }
-      else if (
+      } else if (
         field.name === "thumbnailUrl" &&
         field.value.trim() &&
         !isValidThumbnailUrl(field.value)
@@ -130,9 +128,9 @@ export default function ImportPage({
     return Object.keys(nextErrors).length === 0;
   }
 
-    async function checkMetadata(source: string) {
-      const requestId = ++metadataRequestId.current;
-      const normalizedUrl = normalizeSourceUrl(source.trim());
+  async function checkMetadata(source: string) {
+    const requestId = ++metadataRequestId.current;
+    const normalizedUrl = normalizeSourceUrl(source.trim());
 
     if (!source.trim()) {
       setMetadata(null);
@@ -170,7 +168,7 @@ export default function ImportPage({
       );
     } finally {
       if (requestId === metadataRequestId.current) {
-      setMetadataLoading(false);
+        setMetadataLoading(false);
       }
     }
   }
@@ -183,9 +181,7 @@ export default function ImportPage({
     const values = new FormData(form);
     const text = (name: string) => String(values.get(name) ?? "").trim();
     const sourceUrl = text("source");
-    const normalizedSourceUrl = sourceUrl
-      ? normalizeSourceUrl(sourceUrl)!
-      : "";
+    const normalizedSourceUrl = sourceUrl ? normalizeSourceUrl(sourceUrl)! : "";
     const matchingMetadata =
       metadata?.sourceUrl === normalizedSourceUrl ? metadata : null;
     submitting.current = true;
@@ -248,7 +244,10 @@ export default function ImportPage({
             : failure instanceof RecipeSaveError &&
                 failure.code === "profile_not_found"
               ? "Your account profile is missing. Contact your Cookmarked administrator."
-              : "Unable to save recipe. Please try again.",
+              : failure instanceof RecipeSaveError &&
+                  failure.code === "temp_recipe_not_found"
+                ? "This imported recipe is no longer available. Refresh your inbox."
+                : "Unable to save recipe. Please try again.",
         );
       }
     } finally {
@@ -282,10 +281,15 @@ export default function ImportPage({
       </h2>
       <h3 id="recipe-heading">New Recipe</h3>
       {tempRecipe && (
-        <aside className="imported-recipe-reference" aria-labelledby="imported-recipe-heading">
+        <aside
+          className="imported-recipe-reference"
+          aria-labelledby="imported-recipe-heading"
+        >
           <p className="eyebrow">Imported reference</p>
           <h4 id="imported-recipe-heading">{tempRecipe.title}</h4>
-          {tempRecipe.sharedFromPlatform && <p>Shared from {tempRecipe.sharedFromPlatform}</p>}
+          {tempRecipe.sharedFromPlatform && (
+            <p>Shared from {tempRecipe.sharedFromPlatform}</p>
+          )}
           {tempRecipe.url && (
             <p>
               <a href={tempRecipe.url} target="_blank" rel="noreferrer">
@@ -359,9 +363,7 @@ export default function ImportPage({
           />
           {fieldError("source")}
         </label>
-        {metadataLoading && (
-          <p role="status">Checking source link…</p>
-        )}
+        {metadataLoading && <p role="status">Checking source link…</p>}
 
         {metadata?.platform && (
           <p role="status">
@@ -374,7 +376,7 @@ export default function ImportPage({
             {metadataError}
           </p>
         )}
-        
+
         <label className="editor-field" style={fieldStyle}>
           <span id="title-label">
             Recipe Title <span className="field-hint">(Required)</span>
@@ -389,7 +391,7 @@ export default function ImportPage({
           />
           {fieldError("title")}
         </label>
-                <label className="editor-field" style={fieldStyle}>
+        <label className="editor-field" style={fieldStyle}>
           <span>Description</span>
           <textarea
             name="description"

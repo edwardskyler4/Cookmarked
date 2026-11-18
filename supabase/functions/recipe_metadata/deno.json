@@ -1,6 +1,7 @@
-
 {
   "imports": {
     "@supabase/supabase-js": "npm:@supabase/supabase-js@2.57.4"
-  }
+  },
+  "nodeModulesDir": "none",
+  "lock": "../deno.lock"
 }

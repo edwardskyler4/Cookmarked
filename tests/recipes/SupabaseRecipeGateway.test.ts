@@ -80,75 +80,14 @@ describe("SupabaseRecipeGateway", () => {
     );
   });
 
-  it("resolves the authenticated profile and inserts its recipe", async () => {
-    const { gateway, fetch } = setup([
-      { body: [{ user_id: 42 }] },
-      {
-        body: {
-          recipe_id: 7,
-          user_id: 42,
-          title: "Tomato Pasta",
-          description: "A quick pasta dinner.",
-          ingredients: "Pasta\nTomatoes",
-          instructions: "Boil pasta and add tomatoes.",
-          prep_time: "10 min",
-          cook_time: "20 min",
-          servings: 2,
-          meal_type: "Dinner",
-          course: "Entree",
-          created_at: "2026-01-01T00:00:00.000Z",
-          updated_at: "2026-01-01T00:00:00.000Z",
-          nutrition_info: null,
-        },
-      },
-    ]);
-
-    const result = await gateway.create("auth-user-id", {
-      title: "Tomato Pasta",
-      description: "A quick pasta dinner.",
-      ingredients: "Pasta\nTomatoes",
-      instructions: "Boil pasta and add tomatoes.",
-      prepTime: "10 min",
-      cookTime: "20 min",
-      servings: 2,
-      mealType: "Dinner",
-      course: "Entree",
-    });
-
-    expect(result).toMatchObject({
-      recipeId: 7,
-      userId: 42,
-      title: "Tomato Pasta",
-      mealType: "Dinner",
-      course: "Entree",
-      description: "A quick pasta dinner.",
-    });
-
-    const profileRequest = new Request(
-      fetch.mock.calls[0][0],
-      fetch.mock.calls[0][1],
+  it("does not query recipes when the authenticated profile is missing", async () => {
+    const { gateway, fetch } = setup([{ body: [] }]);
+    await expect(gateway.list("auth-user-id")).rejects.toThrow(
+      "Unable to resolve",
     );
-    expect(new URL(profileRequest.url).pathname).toBe("/rest/v1/profile");
-    expect(new URL(profileRequest.url).searchParams.get("auth_user_id")).toBe(
-      "eq.auth-user-id",
+    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(String(fetch.mock.calls[0][0])).toContain(
+      "auth_user_id=eq.auth-user-id",
     );
-
-    const recipeRequest = new Request(
-      fetch.mock.calls[1][0],
-      fetch.mock.calls[1][1],
-    );
-    expect(new URL(recipeRequest.url).pathname).toBe("/rest/v1/recipe");
-    expect(await recipeRequest.json()).toEqual({
-      user_id: 42,
-      title: "Tomato Pasta",
-      description: "A quick pasta dinner.",
-      ingredients: "Pasta\nTomatoes",
-      instructions: "Boil pasta and add tomatoes.",
-      prep_time: "10 min",
-      cook_time: "20 min",
-      servings: 2,
-      meal_type: "Dinner",
-      course: "Entree",
-    });
   });
 });

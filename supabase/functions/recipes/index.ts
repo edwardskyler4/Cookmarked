@@ -60,3 +60,4 @@ export function createRecipeRequestHandler(config: FunctionConfig) {
 if (typeof Deno !== "undefined") {
   Deno.serve(createRecipeRequestHandler(environmentConfig()));
 }
+

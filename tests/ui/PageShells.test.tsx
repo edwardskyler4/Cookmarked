@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { fakeRecipeMetadataService } from "../fakes/recipeMetadataService";
 import { fakeRecipeService } from "../fakes/recipeService";
 
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
@@ -15,6 +16,7 @@ describe("Cookmarked page shells", () => {
     async (page) => {
       render(
         <App
+          recipeMetadataService={fakeRecipeMetadataService()}
           recipeService={fakeRecipeService()}
           authService={fakeAuthService().service}
         />,
@@ -27,7 +29,7 @@ describe("Cookmarked page shells", () => {
       expect(
         screen.getByRole("searchbox", { name: "Search recipes" }),
       ).toBeDefined();
-      expect(screen.getByText("No recipes saved yet.")).toBeDefined();
+      expect(await screen.findByText("No recipes saved yet.")).toBeDefined();
       expect(screen.queryByRole("heading", { name: page })).toBeNull();
       expect(screen.getByText("Home / Library")).toBeDefined();
       expect(
@@ -44,6 +46,7 @@ describe("Cookmarked page shells", () => {
   it("returns to the home library after logging in again", async () => {
     render(
       <App
+        recipeMetadataService={fakeRecipeMetadataService()}
         recipeService={fakeRecipeService()}
         authService={fakeAuthService().service}
       />,
@@ -69,6 +72,7 @@ describe("Cookmarked page shells", () => {
   it("opens login after signing out from the header", async () => {
     render(
       <App
+        recipeMetadataService={fakeRecipeMetadataService()}
         recipeService={fakeRecipeService()}
         authService={fakeAuthService().service}
       />,
@@ -83,6 +87,7 @@ describe("Cookmarked page shells", () => {
   it("opens settings from the main navigation", async () => {
     render(
       <App
+        recipeMetadataService={fakeRecipeMetadataService()}
         recipeService={fakeRecipeService()}
         authService={fakeAuthService().service}
       />,
@@ -108,6 +113,7 @@ describe("Cookmarked page shells", () => {
   it("opens Add from the main navigation", async () => {
     render(
       <App
+        recipeMetadataService={fakeRecipeMetadataService()}
         recipeService={fakeRecipeService()}
         authService={fakeAuthService().service}
       />,
@@ -134,6 +140,7 @@ describe("Cookmarked page shells", () => {
   it("opens the planner from the main navigation", async () => {
     render(
       <App
+        recipeMetadataService={fakeRecipeMetadataService()}
         recipeService={fakeRecipeService()}
         authService={fakeAuthService().service}
       />,
