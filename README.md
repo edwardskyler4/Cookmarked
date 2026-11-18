@@ -226,8 +226,8 @@ not a migration runner; use the versioned migrations to update a database.
 Repository changes do not update deployed Supabase functions. The following rollout
 procedure changes hosted state and is separate from local implementation:
 
-1. Review pending migrations against the intended project, then apply the two new
-   migrations there. Database changes are never applied by the release scripts.
+1. Review pending migrations against the intended project, including the read-only
+   integrity audit, then apply the description, conversion, and integrity migrations there. Database changes are never applied by the release scripts.
 2. Supply `AUTH_ALLOWED_ORIGINS` as exact origins without a trailing slash, including
    `https://cookmarked.edw20009.workers.dev` and any local/preview origins you use.
 3. Run the guarded function release with an explicit target:
@@ -238,10 +238,11 @@ procedure changes hosted state and is separate from local implementation:
 
    This runs `check` and `test:db`, then deploys every function directory containing
    `index.ts`. Shared files are bundled separately into each endpoint, so deploying
-   only one consumer leaves the others unchanged. All functions use handler-owned
-   authentication (`verify_jwt = false`); recipe requests still require a user token
-   verified by Supabase Auth before accessing data. The credential endpoint
-   authenticates username/password instead.
+   only one consumer leaves the others unchanged. Protected functions use both
+   gateway verification (`verify_jwt = true`) and the shared verified-user boundary.
+   Only `auth` has `verify_jwt = false`, because login and registration start without
+   a session. Complete the development gateway compatibility checks below before
+   promoting this configuration to production.
 
 4. Run the read-only preflight check:
 
@@ -262,6 +263,90 @@ procedure changes hosted state and is separate from local implementation:
 Both stop when validation fails. Direct Wrangler/Supabase CLI deployments bypass
 these repository guards. A release can stop after some functions deploy; after
 correcting the failure, rerun the function release and repeat preflight checks.
+
+### Endpoint and authentication contract
+
+`supabase/functions/_shared/ui/endpoints.ts` declares every endpoint's access policy
+and methods. CI compares this registry with the deployed function directories.
+The shared endpoint wrapper owns method checks, bearer parsing, user verification,
+error mapping, and the HTTP response boundary. Individual controllers receive a
+verified user ID and work through business-layer contracts. Supabase clients are created per request in the
+composition root with the caller's JWT; RLS remains enabled.
+
+| Endpoint          | Access                        | Methods      | Success               |
+| ----------------- | ----------------------------- | ------------ | --------------------- |
+| `auth`            | Username/password credentials | POST         | 200, session tokens   |
+| `recipes`         | Verified user                 | GET          | 200, recipe array     |
+| `recipes_save`    | Verified user                 | POST         | 201, `{ recipeId }`   |
+| `temp_recipes`    | Verified user                 | GET / DELETE | 200 array / 204 empty |
+| `recipe_metadata` | Verified user                 | POST         | 200, metadata object  |
+
+OPTIONS is handled before authentication or client construction. Unsupported
+methods return 405 with `Allow` before authentication. All supported protected
+operations authenticate before parsing bodies or accessing data. The old
+`POST /recipes` write path is retired; manual creation and conversion both go
+through the validated `recipes_save` use cases.
+
+Application errors have one flat shape: `{ code, field? }`. The typed code/status
+mapping is in `ui/apiError.ts`. Malformed JSON returns `invalid_json` (400), field
+validation and existing metadata/credential validation codes return 400, missing or
+invalid user credentials return 401, forbidden access returns 403, missing temporary
+recipes return 404, unsupported methods return 405, username conflicts return 409,
+rate limits return 429, and unexpected infrastructure failures return 503. Existing
+domain codes such as `profile_not_found` and `invalid_credentials` are retained.
+Blocked origins intentionally receive no allow-origin header. Allowed-origin
+application responses include CORS headers and `Cache-Control: no-store`.
+
+Gateway failures occur before application code and may have a different body.
+The auth/save browser adapters normalize readable provider failures by HTTP status,
+including non-JSON 401 responses. Contract tests round-trip every declared
+application error through the browser parser. An opaque browser CORS failure cannot
+be normalized; the following hosted compatibility checks must catch it.
+
+### Development gateway compatibility gate
+
+This repository stages `verify_jwt = true` for the four protected functions.
+Local unit tests and Deno checks do not emulate Supabase's hosted gateway. Before
+promoting this configuration, deploy the candidate to an explicitly approved
+**development project** and verify:
+
+- Allowed-origin OPTIONS succeeds without a JWT, with the expected methods/headers.
+- A real signed-in ES256 user session works with the project's publishable key.
+- Missing, invalid, expired, foreign-project, and API-key-only user credentials
+  produce a readable 401 for supported protected operations, with no writes.
+- Public login/registration still work without an existing session.
+- Two accounts remain isolated by RLS, and valid saving/conversion work after the
+  required migrations are applied.
+
+Do not log or paste bearer tokens. Test credentials stay in environment variables.
+Gateway verification supplements the shared user check: Supabase's API-key
+compatibility behavior does not itself establish a user identity. See
+[Supabase authorization headers](https://supabase.com/docs/guides/functions/auth-headers).
+
+### Persistent recipe integrity
+
+Apply the new forward migration `202611160001_recipe_integrity.sql` after the
+existing migrations. It preserves the JSON RPC signature and existing ownership,
+rollback, receipt, and concurrent-retry behavior. It adds explicit JSON type checks
+before coercion, integer/range checks, and named table constraints covering required
+content and stored HTTP(S) URL shape. The Edge service still performs business
+validation and URL normalization; the SQL URL checks are storage guards, not a
+replacement for the application's URL parser. The existing servings range,
+including negative integers, is unchanged.
+
+The constraints apply to direct INSERTs as well as conversion RPC writes. Recognized
+constraint failures map to field validation errors; unknown database failures remain
+503s without exposing raw messages. Ownership and generated IDs always come from
+the authenticated profile and database, regardless of JSON identity fields.
+
+Run `supabase/reference/recipe_integrity_audit.sql` in a database-owner SQL session
+for a read-only aggregate audit. It returns counts and constraint-validation state,
+not recipe contents. The new CHECK constraints are initially `NOT VALID`: existing
+rows remain untouched, while new inserts/updates must comply. Review any legacy
+violations and agree on cleanup before issuing `VALIDATE CONSTRAINT` in a later
+migration. No automatic backfill, deletion, or invented field values are included.
+The disposable database suite verifies legacy preservation as well as new-write
+rejection, rollback, ownership, valid negative servings, and concurrent retries.
 
 ### Diagnosing a browser CORS error
 
@@ -307,9 +392,9 @@ SUPABASE_PROJECT_REF=YOUR_PROJECT_REF pnpm deploy:functions
 pnpm deploy
 ```
 
-`verify_jwt = false` in the function configuration lets the handler perform token
-verification with Auth; the endpoint still requires a verified bearer JWT before
-any profile lookup or insert.
+`verify_jwt = true` enables the platform check. The shared endpoint boundary also
+verifies a user session with Auth before any profile lookup or insert; API keys
+alone are not user identities.
 
 `pnpm test:run` covers recipe rules, SDK mappings using local HTTP responses,
 request authentication, and form states. `pnpm test:db` also checks recipe ownership

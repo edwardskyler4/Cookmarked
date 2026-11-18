@@ -1,3 +1,4 @@
+import { throwRecipeStorageError } from "./recipeStorageError.ts";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   RecipeError,
@@ -30,7 +31,7 @@ export class SupabaseRecipeRepository
       p_recipe: toRow(recipe),
     });
     if (error?.code === "P0002") throw new RecipeError("temp_recipe_not_found");
-    if (error) throw error;
+    if (error) throwRecipeStorageError(error);
     if (!Number.isInteger(data?.recipeId) || data.recipeId < 1)
       throw new Error("Invalid conversion response");
     return { recipeId: data.recipeId };
@@ -44,7 +45,7 @@ export class SupabaseRecipeRepository
       .insert(toRow(recipe))
       .select("recipe_id")
       .single();
-    if (error) throw error;
+    if (error) throwRecipeStorageError(error);
     return { recipeId: data.recipe_id };
   }
 }

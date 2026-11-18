@@ -23,7 +23,7 @@ convert_once() {
   docker exec -i "$conversion_container" psql -U postgres -v ON_ERROR_STOP=1 -Atq -v temp_id="$conversion_temp_id" <<'SQL'
 set role authenticated;
 set request.jwt.claim.sub = '33333333-3333-3333-3333-333333333333';
-select public.convert_temp_recipe(:temp_id, '{"title":"Concurrent save","meal_type":"N/A","course":"N/A"}');
+select public.convert_temp_recipe(:temp_id, '{"title":"Concurrent save","prep_time":"10 min","ingredients":"Water","instructions":"Boil","servings":4,"meal_type":"N/A","course":"N/A"}');
 SQL
 }
 convert_once > "$conversion_output/first" &

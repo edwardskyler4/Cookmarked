@@ -55,3 +55,19 @@ describe("HTTP response CORS boundary", () => {
     expect(response.headers.get("Access-Control-Allow-Origin")).toBe(origin);
   });
 });
+
+it("returns the common forbidden code for an unconfigured origin", async () => {
+  const action = () => {
+    throw new Error("must not run");
+  };
+  const response = await handleHttpRequest(
+    new Request("https://api.example", {
+      headers: { Origin: "https://untrusted.example" },
+    }),
+    [origin],
+    "POST, OPTIONS",
+    action,
+  );
+  expect(response.status).toBe(403);
+  expect(await response.json()).toEqual({ code: "forbidden" });
+});

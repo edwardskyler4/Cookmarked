@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { handleTempRecipe } from "../../supabase/functions/_shared/ui/tempRecipeHandler";
+import { handleTempRecipe } from "../fakes/endpoints";
 
 describe("handleTempRecipe", () => {
   it("lists the authenticated user's temporary recipes", async () => {

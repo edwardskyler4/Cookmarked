@@ -1,10 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type {
-  Recipe,
-  RecipeCreator,
-  RecipeInput,
-  RecipeReader,
-} from "../domain/Recipe.ts";
+import type { Recipe, RecipeInput, RecipeReader } from "../domain/Recipe.ts";
 
 type ProfileRow = {
   user_id: number;
@@ -54,7 +49,7 @@ function toRecipe(row: RecipeRow): Recipe {
   };
 }
 
-export class SupabaseRecipeGateway implements RecipeCreator, RecipeReader {
+export class SupabaseRecipeGateway implements RecipeReader {
   constructor(private readonly client: SupabaseClient) {}
 
   private async resolveProfile(authUserId: string): Promise<ProfileRow> {
@@ -83,42 +78,11 @@ export class SupabaseRecipeGateway implements RecipeCreator, RecipeReader {
       .returns<RecipeRow[]>();
 
     if (error || !data) {
-      throw new Error(`Unable to list recipes: ${error?.message ?? "unknown error"}`);
+      throw new Error(
+        `Unable to list recipes: ${error?.message ?? "unknown error"}`,
+      );
     }
 
     return data.map(toRecipe);
-  }
-
-  async create(authUserId: string, input: RecipeInput): Promise<Recipe> {
-    const profile = await this.resolveProfile(authUserId);
-    const { data, error } = await this.client
-      .from("recipe")
-      .insert({
-        user_id: profile.user_id,
-        title: input.title,
-        description: input.description ?? input.note,
-        ingredients: input.ingredients,
-        instructions: input.instructions,
-        prep_time: input.prepTime,
-        cook_time: input.cookTime,
-        servings: input.servings,
-        meal_type: input.mealType,
-        course: input.course,
-        shared_from_platform: input.sharedFromPlatform,
-        url: input.url,
-        media_type: input.mediaType,
-        thumbnail_url: input.thumbnailUrl,
-        nutrition_info: input.nutritionInfo,
-      })
-      .select(
-        "recipe_id,user_id,title,description,ingredients,instructions,prep_time,cook_time,servings,meal_type,course,created_at,updated_at,shared_from_platform,url,media_type,thumbnail_url,nutrition_info",
-      )
-      .single<RecipeRow>();
-
-    if (error || !data) {
-      throw new Error(`Unable to create recipe: ${error?.message ?? "unknown error"}`);
-    }
-
-    return toRecipe(data);
   }
 }

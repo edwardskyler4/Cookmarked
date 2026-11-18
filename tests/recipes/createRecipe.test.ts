@@ -71,9 +71,7 @@ describe("createRecipe", () => {
       url: "example.com/recipe",
     });
 
-    expect(repo.insert.mock.calls[0][0].url).toBe(
-      "https://example.com/recipe",
-    );
+    expect(repo.insert.mock.calls[0][0].url).toBe("https://example.com/recipe");
   });
   it.each([
     ["http://example.com/recipe", "http://example.com/recipe"],
@@ -202,3 +200,29 @@ describe("createRecipe", () => {
     expect(repo.insert).not.toHaveBeenCalled();
   });
 });
+
+it("cannot bypass validation through a repository create property", async () => {
+  const repo = {
+    ...repository(),
+    create: vi.fn().mockResolvedValue({ recipeId: 9 }),
+  };
+  await expect(
+    createRecipe(repo, "user", { ...input, title: "" }),
+  ).rejects.toMatchObject({ code: "invalid_input", field: "title" });
+  expect(repo.create).not.toHaveBeenCalled();
+  expect(repo.insert).not.toHaveBeenCalled();
+});
+
+it.each(["url", "thumbnailUrl"])(
+  "normalizes whitespace in %s before enforcing the storage URL format",
+  async (field) => {
+    const repo = repository();
+    await createRecipe(repo, "user", {
+      ...input,
+      [field]: "https://example.com/a recipe",
+    });
+    expect(repo.insert.mock.calls[0][0][field]).toBe(
+      "https://example.com/a%20recipe",
+    );
+  },
+);

@@ -29,10 +29,6 @@ export interface Recipe extends RecipeInput {
   updatedAt: Date;
 }
 
-export interface RecipeCreator {
-  create(authUserId: string, input: RecipeInput): Promise<Recipe>;
-}
-
 export interface RecipeReader {
   list(authUserId: string): Promise<Recipe[]>;
 }

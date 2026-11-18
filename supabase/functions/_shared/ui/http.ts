@@ -48,7 +48,7 @@ export async function handleHttpRequest(
   const headers = corsHeaders(request, origins, methods);
   const origin = request.headers.get("Origin");
   if (origin && !origins.includes(origin))
-    return jsonResponse(403, { code: "invalid_input" }, headers);
+    return jsonResponse(403, { code: "forbidden" }, headers);
   if (request.method === "OPTIONS")
     return new Response(null, { status: 204, headers });
   try {

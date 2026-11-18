@@ -63,8 +63,9 @@ describe("browser authentication", () => {
     const { repo, auth } = setup();
     const service = createAuthService(repo);
 
-    await expect(service.updatePassword("weak"))
-      .rejects.toMatchObject({ code: "weak_password" });
+    await expect(service.updatePassword("weak")).rejects.toMatchObject({
+      code: "weak_password",
+    });
 
     expect(auth.updateUser).not.toHaveBeenCalled();
   });
@@ -76,8 +77,9 @@ describe("browser authentication", () => {
     });
     const service = createAuthService(repo);
 
-    await expect(service.updatePassword("StrongPassword1!"))
-      .rejects.toMatchObject({ code: "weak_password" });
+    await expect(
+      service.updatePassword("StrongPassword1!"),
+    ).rejects.toMatchObject({ code: "weak_password" });
   });
   it("returns no user without a session", async () => {
     const { repo, auth } = setup();
@@ -204,4 +206,16 @@ describe("expired session restoration", () => {
     expect(await repo.restore()).toBeNull();
     expect(auth.signOut).toHaveBeenCalledWith({ scope: "local" });
   });
+});
+
+it("normalizes a non-JSON gateway rejection", async () => {
+  const { repo, functions, auth } = setup();
+  functions.invoke.mockResolvedValue({
+    data: null,
+    error: { context: new Response("gateway rejection", { status: 401 }) },
+  } as never);
+  await expect(repo.login("kyler", "password123")).rejects.toMatchObject({
+    code: "unauthorized",
+  });
+  expect(auth.setSession).not.toHaveBeenCalled();
 });

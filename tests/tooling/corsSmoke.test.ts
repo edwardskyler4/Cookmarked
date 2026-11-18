@@ -37,7 +37,7 @@ describe("read-only deployed CORS check", () => {
       "recipes_save",
       "temp_recipes",
     ]);
-    expect(fetch).toHaveBeenCalledTimes(7);
+    expect(fetch).toHaveBeenCalledTimes(6);
     for (const [url, options] of fetch.mock.calls) {
       expect(new URL(url).pathname).toMatch(/^\/functions\/v1\//);
       expect(options.method).toBe("OPTIONS");

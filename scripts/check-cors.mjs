@@ -1,13 +1,14 @@
 import { pathToFileURL } from "node:url";
 import { edgeFunctions } from "./edge-functions.mjs";
 
-const methods = {
-  auth: ["POST"],
-  recipe_metadata: ["POST"],
-  recipes: ["GET", "POST"],
-  recipes_save: ["POST"],
-  temp_recipes: ["GET", "DELETE"],
-};
+import { endpointPolicies } from "../supabase/functions/_shared/ui/endpoints.ts";
+const methods = Object.fromEntries(
+  Object.entries(endpointPolicies).map(([name, policy]) => [
+    name,
+    policy.methods,
+  ]),
+);
+
 const requestHeaders = [
   "authorization",
   "apikey",

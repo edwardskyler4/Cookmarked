@@ -1,5 +1,6 @@
 -- PostgreSQL schema reference for Supabase (not a migration runner).
--- Apply versioned migrations for RLS and the conversion receipt table/RPC.
+-- Apply versioned migrations for RLS, conversion receipts/RPC, and the
+-- 202611160001 staged integrity constraints; this file is not a complete deployment.
 -- Base recipe/temp_recipe definitions were supplied on 2026-11-14.
 
 -- -----------------------------------------------------

@@ -1,8 +1,3 @@
-import type {
-  Recipe,
-  RecipeCreator,
-  RecipeInput as LegacyRecipeInput,
-} from "../domain/Recipe.ts";
 import {
   RecipeError,
   type RecipeRepository,
@@ -10,24 +5,11 @@ import {
   type RecipeInput,
 } from "../domain/RecipeRepository.ts";
 
-export function createRecipe(
-  creator: RecipeCreator,
-  authUserId: string,
-  input: LegacyRecipeInput,
-): Promise<Recipe>;
-export function createRecipe(
-  repository: RecipeRepository,
+export async function createRecipe(
+  source: RecipeRepository,
   authUserId: string,
   input: unknown,
-): Promise<{ recipeId: number }>;
-export async function createRecipe(
-  source: RecipeCreator | RecipeRepository,
-  authUserId: string,
-  input: LegacyRecipeInput | unknown,
-): Promise<Recipe | { recipeId: number }> {
-  if ("create" in source)
-    return source.create(authUserId, input as LegacyRecipeInput);
-
+): Promise<{ recipeId: number }> {
   if (!input || typeof input !== "object" || Array.isArray(input))
     throw new RecipeError("invalid_input");
   const body = input as Record<string, unknown>;
@@ -67,11 +49,12 @@ export async function createRecipe(
   )
     throw new RecipeError("invalid_input", "course");
 
-  const thumbnailUrl = text("thumbnailUrl");
+  let thumbnailUrl = text("thumbnailUrl");
 
   if (thumbnailUrl) {
     try {
       const parsedThumbnailUrl = new URL(thumbnailUrl);
+      if (/\s/u.test(thumbnailUrl)) thumbnailUrl = parsedThumbnailUrl.href;
 
       if (
         !["http:", "https:"].includes(parsedThumbnailUrl.protocol) ||
@@ -95,7 +78,9 @@ export async function createRecipe(
         ? `https://${url.slice(singleSlashScheme[0].length)}`
         : `https://${url}`;
     try {
-      const hostname = new URL(normalizedUrl).hostname;
+      const parsedUrl = new URL(normalizedUrl);
+      const hostname = parsedUrl.hostname;
+      if (/\s/u.test(normalizedUrl)) normalizedUrl = parsedUrl.href;
       if (
         !/^https?:\/\/[^/\s]/i.test(normalizedUrl) ||
         !/\.[^.]+$/.test(hostname)
