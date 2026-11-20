@@ -35,26 +35,61 @@ do $$ begin
   update public.recipe set title='Changed';
   raise exception 'Unrequested update access granted';
  exception when insufficient_privilege then null; end;
- begin
-  delete from public.recipe;
-  raise exception 'Unrequested delete access granted';
- exception when insufficient_privilege then null; end;
+  -- A user must not be able to delete another user's recipe.
+ delete from public.recipe
+  where user_id = current_setting('test.other_id')::integer;
+ if found then
+  raise exception 'Other users recipe deletion accepted';
+ end if;
 end $$;
 set local request.jwt.claim.sub = '22222222-2222-2222-2222-222222222222';
 do $$ begin
  if exists(select 1 from public.recipe where recipe_id=current_setting('test.recipe_id')::integer) then raise exception 'Second account can read first account recipe'; end if;
  if (select count(*) from public.recipe) <> 1 then raise exception 'Second account must see only its own recipe'; end if;
+
+ -- The second account must not be able to delete the first account's recipe.
+ delete from public.recipe
+  where recipe_id=current_setting('test.recipe_id')::integer;
+ if found then
+  raise exception 'Second account deleted first account recipe';
+ end if;
 end $$;
+
+-- The authenticated owner must be able to delete their own recipe.
+set local request.jwt.claim.sub = '11111111-1111-1111-1111-111111111111';
+do $$ begin
+ delete from public.recipe
+  where recipe_id=current_setting('test.recipe_id')::integer;
+ if not found then
+  raise exception 'Owner could not delete their own recipe';
+ end if;
+ if exists(select 1 from public.recipe where recipe_id=current_setting('test.recipe_id')::integer) then
+  raise exception 'Deleted recipe is still present';
+ end if;
+end $$;
+
 reset role;
+do $$ begin
+ if exists(select 1 from public.recipe where recipe_id=current_setting('test.recipe_id')::integer) then
+  raise exception 'Owner recipe was not deleted from storage';
+ end if;
+ if not exists(select 1 from public.recipe where user_id=current_setting('test.other_id')::integer and title='Other recipe') then
+  raise exception 'Other users recipe was incorrectly deleted';
+ end if;
+end $$;
 set local role anon;
 do $$ begin
  begin
   perform * from public.recipe;
   raise exception 'Anonymous read accepted';
  exception when insufficient_privilege then null; end;
- begin
+  begin
   insert into public.recipe(user_id,title,meal_type,course,prep_time,ingredients,instructions,servings) values (1,'Anonymous','N/A','N/A','10 min','Water','Boil',4);
   raise exception 'Anonymous insert accepted';
+ exception when insufficient_privilege then null; end;
+ begin
+  delete from public.recipe;
+  raise exception 'Anonymous delete accepted';
  exception when insufficient_privilege then null; end;
 end $$;
 rollback;

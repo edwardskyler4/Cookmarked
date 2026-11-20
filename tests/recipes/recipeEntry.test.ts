@@ -29,6 +29,29 @@ describe("recipes Edge Function entry point", () => {
       "GET",
     );
   });
+  it("allows DELETE requests in the browser preflight", async () => {
+    const handler = createRecipeRequestHandler({
+      supabaseUrl: "https://example.supabase.co",
+      supabaseAnonKey: "public-key",
+      origins: ["http://localhost:5173"],
+    });
+
+    const response = await handler(
+      new Request("https://example.test/recipes", {
+        method: "OPTIONS",
+        headers: {
+          Origin: "http://localhost:5173",
+          "Access-Control-Request-Method": "DELETE",
+          "Access-Control-Request-Headers": "authorization,apikey",
+        },
+      }),
+    );
+
+    expect(response.status).toBe(204);
+    expect(response.headers.get("Access-Control-Allow-Methods")).toContain(
+      "DELETE",
+    );
+  });
 
   it("validates the JWT and lists the user's recipes", async () => {
     const fetch = vi
@@ -80,7 +103,67 @@ describe("recipes Edge Function entry point", () => {
     expect(await response.json()).toEqual([]);
     expect(fetch).toHaveBeenCalledTimes(3);
   });
+  it("validates the JWT and deletes the user's recipe", async () => {
+    const fetch = vi
+      .fn<typeof globalThis.fetch>()
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            id: "auth-user-id",
+            email: "test@example.com",
+          }),
+          {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          },
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify([{ user_id: 42 }]), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify([{ recipe_id: 19 }]), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+      );
 
+    const handler = createRecipeRequestHandler({
+      supabaseUrl: "https://example.supabase.co",
+      supabaseAnonKey: "public-key",
+      origins: ["http://localhost:5173"],
+      createClient: (url, key, options) =>
+        createClient(url, key, {
+          ...options,
+          global: { ...options?.global, fetch },
+        }),
+    });
+
+    const response = await handler(
+      new Request("https://example.test/recipes?recipeId=19", {
+        method: "DELETE",
+        headers: {
+          Authorization: "Bearer access-token",
+          Origin: "http://localhost:5173",
+        },
+      }),
+    );
+
+    expect(response.status).toBe(204);
+    expect(await response.text()).toBe("");
+    expect(fetch).toHaveBeenCalledTimes(3);
+
+    const [deleteUrl, deleteOptions] = fetch.mock.calls[2];
+    const url = new URL(String(deleteUrl));
+
+    expect(deleteOptions?.method).toBe("DELETE");
+    expect(url.pathname).toBe("/rest/v1/recipe");
+    expect(url.searchParams.get("recipe_id")).toBe("eq.19");
+    expect(url.searchParams.get("user_id")).toBe("eq.42");
+  });
   it("rejects the retired POST route before accessing Auth or storage", async () => {
     const fetch = vi
       .fn<typeof globalThis.fetch>()

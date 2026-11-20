@@ -85,4 +85,61 @@ export class SupabaseRecipeGateway implements RecipeReader {
 
     return data.map(toRecipe);
   }
+
+  async create(authUserId: string, input: RecipeInput): Promise<Recipe> {
+    const profile = await this.resolveProfile(authUserId);
+    const { data, error } = await this.client
+      .from("recipe")
+      .insert({
+        user_id: profile.user_id,
+        title: input.title,
+        description: input.description ?? input.note,
+        ingredients: input.ingredients,
+        instructions: input.instructions,
+        prep_time: input.prepTime,
+        cook_time: input.cookTime,
+        servings: input.servings,
+        meal_type: input.mealType,
+        course: input.course,
+        shared_from_platform: input.sharedFromPlatform,
+        url: input.url,
+        media_type: input.mediaType,
+        thumbnail_url: input.thumbnailUrl,
+        nutrition_info: input.nutritionInfo,
+      })
+      .select(
+        "recipe_id,user_id,title,description,ingredients,instructions,prep_time,cook_time,servings,meal_type,course,created_at,updated_at,shared_from_platform,url,media_type,thumbnail_url,nutrition_info",
+      )
+      .single<RecipeRow>();
+
+    if (error || !data) {
+      throw new Error(`Unable to create recipe: ${error?.message ?? "unknown error"}`);
+    }
+
+    return toRecipe(data);
+  }
+  
+  async delete(authUserId: string, recipeId: number): Promise<void> {
+    if (!Number.isSafeInteger(recipeId) || recipeId <= 0) {
+      throw new Error("Invalid recipe ID.");
+    }
+
+    const profile = await this.resolveProfile(authUserId);
+
+    const { data, error } = await this.client
+      .from("recipe")
+      .delete()
+      .eq("recipe_id", recipeId)
+      .eq("user_id", profile.user_id)
+      .select("recipe_id");
+
+    if (error) {
+      throw new Error(`Unable to delete recipe: ${error.message}`);
+    }
+
+    if (!data || data.length !== 1) {
+      throw new Error("Recipe not found or not authorized.");
+    }
+  }
+
 }
