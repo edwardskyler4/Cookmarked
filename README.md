@@ -410,16 +410,17 @@ The 192px and 512px PNG icons are resized copies of `public/logo.jpg`.
 Deploy over HTTPS before checking installation on a phone. See
 [Chrome's installation requirements](https://web.dev/articles/install-criteria).
 
-The collection function is not implemented yet. Visiting `/share-target` keeps
-the incoming query in the address bar and shows the normal app: Login while
-signed out, then Home after authentication. Incoming shares do not open Add,
-prefill its fields, display share instructions there, or save a manual recipe.
-Add remains available for manual recipe entry, including pasting a Source URL.
+The capture function is connected for URLs submitted from the Add page. It
+authenticates the caller, validates and canonicalizes supported social links,
+retrieves bounded Open Graph metadata when available, deduplicates within the
+owner's inbox, and saves the result to `temp_recipe`. Unavailable metadata falls
+back to an item titled `Imported recipe` for manual review.
 
-The intended collection flow is `/share-target` → collection function →
-`temp_recipe` → inbox. Automatic capture, the loading pop-up, capture result
-messages, and inbox refresh will be connected when the collection interface and
-inbox UI are ready.
+Visiting `/share-target` still keeps the incoming query in the address bar and
+shows the normal app: Login while signed out, then Home after authentication.
+Automatic share-target handoff into the capture function, the loading pop-up,
+and capture result messages remain pending. Add remains available for manual
+recipe entry and pasted URL capture.
 
 The incoming address uses a GET query, for example:
 
@@ -506,6 +507,14 @@ deploy all affected functions, and rebuild the frontend:
 
 ```sh
 pnpm exec supabase db push
+pnpm exec supabase functions deploy capture
+pnpm exec supabase functions deploy temp_recipes
 SUPABASE_PROJECT_REF=YOUR_PROJECT_REF pnpm deploy:functions
 pnpm deploy
 ```
+
+
+## Things to do later
+
+- Long names need to be truncated so more details dots can show
+- Fix dark mode

@@ -19,6 +19,49 @@ import { fakeAuthService } from "../fakes/authService";
 afterEach(cleanup);
 
 describe("Cookmarked home", () => {
+  it("captures a pasted URL through the temp recipe repository and refreshes the inbox", async () => {
+    let imported: { recipeId: number; title: string } | null = null;
+    const tempRecipeRepository: TempRecipeRepository = {
+      list: async () => (imported ? [imported] : []),
+      remove: async () => {},
+      capture: vi.fn(async () => {
+        imported = { recipeId: 11, title: "Imported pasta" };
+        return {
+          recipeId: 11,
+          title: "Imported pasta",
+          url: "https://www.instagram.com/p/ABC123/",
+          sharedFromPlatform: "Instagram",
+        };
+      }),
+    };
+
+    render(
+      <App
+        authService={fakeAuthService().service}
+        recipeReader={{ list: async () => [] }}
+        recipeService={fakeRecipeService()}
+        tempRecipeRepository={tempRecipeRepository}
+      />,
+    );
+
+    await screen.findByRole("searchbox");
+    fireEvent.click(screen.getByRole("button", { name: "Add" }));
+    await screen.findByText("No imported recipes waiting for review.");
+    fireEvent.change(screen.getByLabelText("Recipe URL"), {
+      target: { value: "https://www.instagram.com/p/ABC123/#comments" },
+    });
+    fireEvent.change(screen.getByLabelText("Share text (optional)"), {
+      target: { value: "Dinner idea" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Import URL" }));
+
+    expect(tempRecipeRepository.capture).toHaveBeenCalledWith(
+      "https://www.instagram.com/p/ABC123/#comments",
+      "Dinner idea",
+    );
+    expect(await screen.findByRole("button", { name: "Imported pasta" })).toBeDefined();
+  });
+
   it("accepts a recipe URL from the import inbox hook", async () => {
     const importUrl = vi.fn();
     const consoleLog = vi.spyOn(console, "log").mockImplementation(() => {});

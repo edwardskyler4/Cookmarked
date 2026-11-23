@@ -91,7 +91,7 @@ function SignedInApp({
   onSaveDarkMode: (darkMode: boolean) => void;
   recipeReader: RecipeReader;
   tempRecipeRepository?: TempRecipeRepository;
-  onImportUrl: (url: string) => void | Promise<void>;
+  onImportUrl?: (url: string) => void | Promise<void>;
 }) {
   const [page, setPage] = useState<Page>("home");
   const [recipes, setRecipes] = useState<Recipe[]>([]);
@@ -99,8 +99,10 @@ function SignedInApp({
   const [recipesError, setRecipesError] = useState<string | null>(null);
   const [tempRecipes, setTempRecipes] = useState<TempRecipe[]>([]);
   const [selectedTempRecipeId, setSelectedTempRecipeId] = useState<
-    number | null
-  >(null);
+        number | null
+        >(null);
+  const [importPending, setImportPending] = useState(false);
+  const [importError, setImportError] = useState<string | null>(null);
 
   const reloadRecipes = useCallback(async () => {
     setRecipesLoading(true);
@@ -118,21 +120,50 @@ function SignedInApp({
     void reloadRecipes();
   }, [reloadRecipes]);
 
+  const reloadTempRecipes = useCallback(async () => {
+    if (!tempRecipeRepository) return;
+    try {
+      setTempRecipes(await tempRecipeRepository.list());
+    } catch {
+      setTempRecipes([]);
+    }
+  }, [tempRecipeRepository]);
+
   useEffect(() => {
     let active = true;
     if (!tempRecipeRepository) return;
-    tempRecipeRepository
-      .list()
-      .then((nextTempRecipes) => {
-        if (active) setTempRecipes(nextTempRecipes);
-      })
-      .catch(() => {
-        if (active) setTempRecipes([]);
-      });
+    void tempRecipeRepository.list().then((nextTempRecipes) => {
+      if (active) setTempRecipes(nextTempRecipes);
+    }).catch(() => {
+      if (active) setTempRecipes([]);
+    });
     return () => {
       active = false;
     };
   }, [tempRecipeRepository]);
+
+  async function importUrl(url: string, shareText: string) {
+    setImportPending(true);
+    setImportError(null);
+    try {
+      if (onImportUrl) {
+        await onImportUrl(url);
+      } else if (tempRecipeRepository?.capture) {
+        await tempRecipeRepository.capture(url, shareText);
+      } else {
+        throw new Error("Import is not available.");
+      }
+      await reloadTempRecipes();
+    } catch (error) {
+      setImportError(
+        error instanceof Error
+          ? error.message
+          : "Unable to import that link. Check the URL and try again.",
+      );
+    } finally {
+      setImportPending(false);
+    }
+  }
   const [displayName, setDisplayName] = useState("");
 
   useEffect(() => {
@@ -271,6 +302,7 @@ function SignedInApp({
                       event.preventDefault();
                       const form = event.currentTarget;
                       const url = new FormData(form).get("recipeUrl");
+                      const shareText = new FormData(form).get("shareText");
                       if (typeof url === "string") {
                         const trimmedUrl = url.trim();
                         console.log(
@@ -278,10 +310,17 @@ function SignedInApp({
                           trimmedUrl,
                           "Planned action: create a temporary recipe for review.",
                         );
-                        void onImportUrl(trimmedUrl);
+                        void importUrl(
+                          trimmedUrl,
+                          typeof shareText === "string" ? shareText : "",
+                        );
                       }
                     }}
                   >
+                    {importError && <p role="alert">{importError}</p>}
+                    {importPending && (
+                      <p role="status">Importing link...</p>
+                    )}
                     <label className="editor-field">
                       <span>Recipe URL</span>
                       <input
@@ -291,8 +330,20 @@ function SignedInApp({
                         required
                       />
                     </label>
-                    <button className="filter-chip active" type="submit">
-                      Import URL
+                    <label className="editor-field">
+                      <span>Share text (optional)</span>
+                      <textarea
+                        name="shareText"
+                        rows={3}
+                        placeholder="Add any text that came with the shared link"
+                      />
+                    </label>
+                    <button
+                      className="filter-chip active"
+                      type="submit"
+                      disabled={importPending}
+                    >
+                      {importPending ? "Importing..." : "Import URL"}
                     </button>
                   </form>
                 </section>
@@ -364,7 +415,7 @@ export default function App({
   recipeMetadataService,
   recipeReader = emptyRecipeReader,
   tempRecipeRepository,
-  onImportUrl = () => {},
+  onImportUrl,
 }: {
   authService: AuthService;
   profileService?: ProfileService;

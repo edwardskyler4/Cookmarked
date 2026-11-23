@@ -15,8 +15,11 @@ export class CaptureUrlError extends Error {
 
 const supportedHosts: Array<[string, CapturePlatform]> = [
   ["facebook.com", "Facebook"],
+  ["fb.watch", "Facebook"],
   ["instagram.com", "Instagram"],
+  ["instagr.am", "Instagram"],
   ["pinterest.com", "Pinterest"],
+  ["pin.it", "Pinterest"],
 ];
 
 function platformForHost(hostname: string): CapturePlatform | null {

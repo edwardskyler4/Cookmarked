@@ -3,6 +3,7 @@ import type {
   TempRecipe,
   TempRecipeRepository,
 } from "../domain/TempRecipeRepository.ts";
+import type { Capture, CaptureRepository, NewCapture } from "../domain/Capture.ts";
 
 type TempRecipeRow = {
   recipe_id: number;
@@ -14,7 +15,7 @@ type TempRecipeRow = {
   thumbnail_url: string | null;
 };
 
-export class SupabaseTempRecipeRepository implements TempRecipeRepository {
+export class SupabaseTempRecipeRepository implements TempRecipeRepository, CaptureRepository {
   constructor(private readonly client: SupabaseClient) {}
 
   private async profileId(authUserId: string): Promise<number> {
@@ -23,7 +24,8 @@ export class SupabaseTempRecipeRepository implements TempRecipeRepository {
       .select("user_id")
       .eq("auth_user_id", authUserId)
       .single();
-    if (error || !data) throw error ?? new Error("Profile not found");
+    if (error || !data)
+      throw new Error(`profile_lookup_failed: ${error?.message ?? "Profile not found"}`);
     return data.user_id;
   }
 
@@ -34,7 +36,7 @@ export class SupabaseTempRecipeRepository implements TempRecipeRepository {
       .select("recipe_id,title,text,shared_from_platform,url,media_type,thumbnail_url")
       .eq("user_id", userId)
       .order("created_at", { ascending: false });
-    if (error) throw error;
+    if (error) throw new Error(`temp_recipe_list_failed: ${error.message}`);
     return (data as TempRecipeRow[]).map((row) => ({
       recipeId: row.recipe_id,
       title: row.title,
@@ -53,6 +55,59 @@ export class SupabaseTempRecipeRepository implements TempRecipeRepository {
       .delete()
       .eq("recipe_id", recipeId)
       .eq("user_id", userId);
-    if (error) throw error;
+    if (error) throw new Error(`temp_recipe_delete_failed: ${error.message}`);
+  }
+
+  async findByCanonicalUrl(authUserId: string, canonicalUrl: string): Promise<Capture | null> {
+    const userId = await this.profileId(authUserId);
+    const { data, error } = await this.client
+      .from("temp_recipe")
+      .select("recipe_id,title,text,shared_from_platform,url,media_type,thumbnail_url")
+      .eq("user_id", userId)
+      .eq("url", canonicalUrl)
+      .maybeSingle();
+    if (error) throw new Error(`capture_duplicate_lookup_failed: ${error.message}`);
+    if (!data) return null;
+    const row = data as TempRecipeRow;
+    return {
+      captureId: row.recipe_id,
+      authUserId,
+      canonicalUrl,
+      platform: row.shared_from_platform as Capture["platform"],
+      title: row.title,
+      description: row.text ?? undefined,
+      thumbnailUrl: row.thumbnail_url ?? undefined,
+      mediaType: row.media_type ?? undefined,
+    };
+  }
+
+  async save(capture: NewCapture): Promise<Capture> {
+    const userId = await this.profileId(capture.authUserId);
+    const { data, error } = await this.client
+      .from("temp_recipe")
+      .insert({
+        user_id: userId,
+        title: capture.title,
+        text: capture.description ?? null,
+        shared_from_platform: capture.platform,
+        url: capture.canonicalUrl,
+        media_type: capture.mediaType ?? null,
+        thumbnail_url: capture.thumbnailUrl ?? null,
+      })
+      .select("recipe_id,title,text,shared_from_platform,url,media_type,thumbnail_url")
+      .single();
+    if (error || !data)
+      throw new Error(`capture_insert_failed: ${error?.message ?? "Unable to save capture"}`);
+    const row = data as TempRecipeRow;
+    return {
+      captureId: row.recipe_id,
+      authUserId: capture.authUserId,
+      canonicalUrl: row.url ?? capture.canonicalUrl,
+      platform: capture.platform,
+      title: row.title,
+      description: row.text ?? undefined,
+      thumbnailUrl: row.thumbnail_url ?? undefined,
+      mediaType: row.media_type ?? undefined,
+    };
   }
 }
