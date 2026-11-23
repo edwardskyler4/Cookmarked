@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { handleTempRecipe } from "../../supabase/functions/_shared/ui/tempRecipeHandler";
+import { handleTempRecipe } from "../fakes/endpoints";
 
 describe("handleTempRecipe", () => {
   it("lists the authenticated user's temporary recipes", async () => {
@@ -51,5 +51,41 @@ describe("handleTempRecipe", () => {
 
     expect(response.status).toBe(401);
     expect(repository.list).not.toHaveBeenCalled();
+  });
+});
+
+describe("temporary recipe outage diagnostics", () => {
+  it("returns a CORS-readable failure with a safe storage diagnostic", async () => {
+    const log = vi.spyOn(console, "error").mockImplementation(() => {});
+    try {
+      const response = await handleTempRecipe(
+        new Request("https://example.test/temp_recipes", {
+          headers: {
+            Authorization: "Bearer token",
+            Origin: "https://app.example",
+          },
+        }),
+        {
+          list: vi.fn().mockRejectedValue(
+            Object.assign(new Error("private recipe text"), {
+              code: "PGRST204",
+            }),
+          ),
+          remove: vi.fn(),
+        },
+        async () => "user",
+        ["https://app.example"],
+      );
+      expect(response.status).toBe(503);
+      expect(response.headers.get("Access-Control-Allow-Origin")).toBe(
+        "https://app.example",
+      );
+      expect(log).toHaveBeenCalledWith("Unable to access temporary recipes", {
+        name: "Error",
+        code: "PGRST204",
+      });
+    } finally {
+      log.mockRestore();
+    }
   });
 });

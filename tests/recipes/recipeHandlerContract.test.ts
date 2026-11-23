@@ -1,37 +1,31 @@
 import { describe, expect, it, vi } from "vitest";
-import { handleRecipe } from "../../supabase/functions/_shared/ui/recipeHandler";
-
+import { userEndpoint } from "../../supabase/functions/_shared/ui/endpoint";
 const origin = "https://cookmarked.example";
-
-describe("recipe handler call contract", () => {
+describe("protected endpoint contract", () => {
   it.each([
-    {
-      mode: "already verified user",
-      call: (request: Request) =>
-        handleRecipe(request, "verified-user", { create: vi.fn() }, [origin]),
-    },
-    {
-      mode: "token verification callback",
-      call: (request: Request) =>
-        handleRecipe(
-          request,
-          { findProfileId: vi.fn(), insert: vi.fn() },
-          vi.fn(),
-          [origin],
-        ),
-    },
-  ])(
-    "uses the fourth argument for allowed origins with $mode",
-    async ({ call }) => {
-      const request = new Request("https://api.example/recipes", {
-        method: "OPTIONS",
-        headers: { Origin: origin },
-      });
-
-      const response = await call(request);
-
+    "recipes",
+    "recipes_save",
+    "temp_recipes",
+    "recipe_metadata",
+  ] as const)(
+    "handles preflight for %s before verification or service calls",
+    async (name) => {
+      const verify = vi.fn();
+      const action = vi.fn();
+      const response = await userEndpoint(
+        name,
+        new Request("https://example.test", {
+          method: "OPTIONS",
+          headers: { Origin: origin },
+        }),
+        [origin],
+        verify,
+        action,
+      );
       expect(response.status).toBe(204);
       expect(response.headers.get("Access-Control-Allow-Origin")).toBe(origin);
+      expect(verify).not.toHaveBeenCalled();
+      expect(action).not.toHaveBeenCalled();
     },
   );
 });

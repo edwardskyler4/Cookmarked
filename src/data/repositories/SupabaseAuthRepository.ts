@@ -1,3 +1,4 @@
+import { functionFailure } from "../functionFailure";
 import type { SupabaseClient, User } from "@supabase/supabase-js";
 import {
   AuthenticationError,
@@ -39,15 +40,7 @@ export class SupabaseAuthRepository implements AuthRepository {
       body: { action, username, password },
     });
     if (error) {
-      let code = "unavailable";
-      if (error.context instanceof Response) {
-        try {
-          const body = await error.context.json();
-          if (typeof body.code === "string") code = body.code;
-        } catch {
-          /* Non-JSON transport errors use the generic message. */
-        }
-      }
+      const { code } = await functionFailure(error);
       throw new AuthenticationError(code);
     }
     if (

@@ -9,17 +9,18 @@ password_requirements = "lower_upper_letters_digits_symbols"
 [functions.auth]
 verify_jwt = false
 
-# Recipe operations require a valid Supabase Auth JWT.
+# Gateway verification plus a shared verified-user boundary protect recipe calls.
 [functions.recipes]
 verify_jwt = true
 
-# The handler validates the bearer JWT with Auth before any database operation.
+# The shared boundary also verifies the user with Auth before any database operation.
 [functions.recipes_save]
-verify_jwt = false
+verify_jwt = true
 
 # Metadata requests validate the bearer JWT inside the handler.
 [functions.recipe_metadata]
-verify_jwt = false
+verify_jwt = true
 
-[functions.capture]
-verify_jwt = false
+# Gateway verification supplements the shared verified-user boundary.
+[functions.temp_recipes]
+verify_jwt = true

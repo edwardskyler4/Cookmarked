@@ -16,24 +16,19 @@ const draft: RecipeDraft = {
 };
 
 describe("convertTempRecipe", () => {
-  it("deletes the temporary recipe after the permanent recipe is saved", async () => {
-    const create = vi.fn().mockResolvedValue({ recipeId: 9 });
-    const remove = vi.fn().mockResolvedValue(undefined);
-
-    await convertTempRecipe({ create }, { remove }, 3, draft);
-
-    expect(create).toHaveBeenCalledWith(draft);
-    expect(remove).toHaveBeenCalledWith(3);
+  it("delegates conversion to the server as one request", async () => {
+    const convert = vi.fn().mockResolvedValue({ recipeId: 9 });
+    await expect(convertTempRecipe({ convert }, 3, draft)).resolves.toEqual({
+      recipeId: 9,
+    });
+    expect(convert).toHaveBeenCalledExactlyOnceWith(3, draft);
   });
 
-  it("does not delete the temporary recipe when saving the permanent recipe fails", async () => {
-    const create = vi.fn().mockRejectedValue(new Error("save failed"));
-    const remove = vi.fn().mockResolvedValue(undefined);
-
-    await expect(
-      convertTempRecipe({ create }, { remove }, 3, draft),
-    ).rejects.toThrow("save failed");
-
-    expect(remove).not.toHaveBeenCalled();
+  it("propagates a failed conversion so the user can retry the same temporary ID", async () => {
+    const convert = vi.fn().mockRejectedValue(new Error("conversion failed"));
+    await expect(convertTempRecipe({ convert }, 3, draft)).rejects.toThrow(
+      "conversion failed",
+    );
+    expect(convert).toHaveBeenCalledExactlyOnceWith(3, draft);
   });
 });
